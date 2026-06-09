@@ -63,7 +63,7 @@ body{
 /* ============ HOME SCREEN ============ */
 #homeScreen{
   width:100%;height:100%;
-  display:flex;flex-direction:column;
+  display:none;flex-direction:column;
   padding:max(10px, env(safe-area-inset-top)) 12px max(8px,env(safe-area-inset-bottom));
   position:relative;
 }
@@ -339,6 +339,20 @@ body{
   will-change:transform;backface-visibility:hidden;z-index:2;
 }
 .tile.sel{filter:brightness(1.08) saturate(1.05);z-index:6;
+  animation: none; /* reset so re-adding works */
+}
+/* Bounce animation when tile is touched / added to chain */
+@keyframes tileBounce {
+  0%   { transform: var(--tile-pos) scale(1);    }
+  30%  { transform: var(--tile-pos) scale(1.28);  }
+  55%  { transform: var(--tile-pos) scale(0.92);  }
+  75%  { transform: var(--tile-pos) scale(1.10);  }
+  90%  { transform: var(--tile-pos) scale(0.97);  }
+  100% { transform: var(--tile-pos) scale(1);    }
+}
+.tile.touch-bounce {
+  animation: tileBounce 0.28s cubic-bezier(0.22,1,0.36,1) forwards;
+}
   box-shadow:inset 0 2px 0 rgba(255,255,255,.18);}
 .tile.pop{animation:pop .22s ease;}
 .tile.vanish{opacity:0;transform:scale(.3) translate(var(--tx),var(--ty));}
@@ -1639,12 +1653,430 @@ body{
   box-shadow:0 1px 0 #7a0820,0 3px 8px rgba(0,0,0,0.3);
 }
 
+
+/* ════════════════════════════════════════════════════════════════
+   SPLASH / LOADING SCREEN
+   Covers the entire viewport, shown before home screen.
+   Fades out after loading bar reaches 100%.
+════════════════════════════════════════════════════════════════ */
+#splashScreen{
+  position:fixed;inset:0;z-index:999;
+  background:#070d2a;
+  display:flex;flex-direction:column;
+  align-items:center;justify-content:space-between;
+  padding:max(40px,env(safe-area-inset-top)) 24px max(32px,env(safe-area-inset-bottom));
+  overflow:hidden;
+  transition:opacity 0.6s ease;
+}
+#splashScreen.fade-out{
+  opacity:0;
+  pointer-events:none;
+}
+
+/* ── Floating decorative symbols ── */
+.splash-deco{
+  position:absolute;
+  font-size:18px;
+  font-weight:900;
+  opacity:0.55;
+  pointer-events:none;
+  animation:decoFloat 4s ease-in-out infinite;
+}
+@keyframes decoFloat{
+  0%,100%{ transform:translateY(0) rotate(0deg); }
+  50%     { transform:translateY(-8px) rotate(10deg); }
+}
+
+/* ── Top section: crown + title ── */
+.splash-top{
+  display:flex;flex-direction:column;align-items:center;
+  gap:0;flex:none;
+}
+
+/* Crown SVG rays */
+.crown-rays{
+  position:absolute;
+  top:-8px;left:50%;transform:translateX(-50%);
+  width:160px;height:80px;
+  pointer-events:none;
+}
+
+/* "2048" small label above NEXUM */
+.splash-sub-title{
+  font-size:26px;font-weight:900;color:#fff;
+  letter-spacing:4px;
+  text-shadow:0 2px 0 rgba(0,0,0,0.4);
+  margin-top:8px;
+  display:flex;align-items:center;gap:12px;
+}
+.splash-sub-title::before,
+.splash-sub-title::after{
+  content:'';flex:1;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent);
+  width:40px;
+}
+
+/* NEXUM big title */
+.splash-title{
+  display:flex;align-items:flex-end;
+  line-height:0.88;
+  margin-top:-4px;
+  filter:drop-shadow(0 6px 0 rgba(0,0,0,0.5));
+}
+.splash-nex{
+  font-size:88px;font-weight:900;letter-spacing:-3px;
+  background:linear-gradient(180deg,#6ef0f0 0%,#00c8c8 50%,#009090 100%);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;
+  paint-order:stroke fill;
+}
+.splash-um{
+  font-size:88px;font-weight:900;letter-spacing:-3px;
+  color:#ffffff;
+  text-shadow:none;
+}
+
+/* Diamond divider */
+.splash-divider{
+  display:flex;align-items:center;gap:10px;
+  margin-top:6px;
+}
+.splash-divider-line{
+  width:60px;height:2px;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,0.2));
+}
+.splash-divider-line.r{
+  background:linear-gradient(90deg,rgba(255,255,255,0.2),transparent);
+}
+.splash-diamond{
+  width:10px;height:10px;
+  background:rgba(255,255,255,0.3);
+  transform:rotate(45deg);
+  border:1.5px solid rgba(255,255,255,0.5);
+}
+
+/* Tagline */
+.splash-tagline{
+  font-size:14px;font-weight:800;letter-spacing:2px;color:#ccc;
+  margin-top:8px;text-transform:uppercase;
+}
+.splash-tagline span{ color:#ffd23d; }
+
+/* ── Middle section: chain + merge demo ── */
+.splash-mid{
+  display:flex;flex-direction:column;align-items:center;
+  gap:14px;width:100%;
+}
+
+/* Block chain row */
+.splash-chain{
+  display:flex;align-items:center;justify-content:center;
+  gap:4px;width:100%;
+}
+.splash-block{
+  width:52px;height:52px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:900;color:#fff;
+  box-shadow:0 4px 0 rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.2);
+  flex:none;
+}
+.splash-arrow{
+  font-size:18px;color:rgba(255,255,255,0.45);flex:none;
+  font-weight:900;
+}
+
+/* Merge animation demo */
+.splash-merge-demo{
+  display:flex;flex-direction:column;align-items:center;
+  position:relative;gap:0;
+}
+.splash-merge-top{
+  display:flex;gap:24px;align-items:flex-end;
+}
+.splash-merge-block{
+  width:56px;height:56px;border-radius:14px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:24px;font-weight:900;color:#fff;
+  background:linear-gradient(180deg,#3a4090,#252860);
+  box-shadow:0 4px 0 rgba(0,0,0,0.35);
+  animation:mergeTilt 2.4s ease-in-out infinite;
+}
+.splash-merge-block:nth-child(2){ animation-delay:0.2s; }
+@keyframes mergeTilt{
+  0%,100%{ transform:translateY(0) rotate(-4deg); }
+  50%    { transform:translateY(-6px) rotate(4deg); }
+}
+.splash-merge-arrow{
+  display:flex;flex-direction:column;align-items:center;
+  margin-top:4px;margin-bottom:4px;
+}
+.splash-merge-arrow svg{ animation:arrowPulse 1.2s ease-in-out infinite; }
+@keyframes arrowPulse{
+  0%,100%{ opacity:0.6;transform:scaleY(1); }
+  50%    { opacity:1;  transform:scaleY(1.15); }
+}
+.splash-merge-result{
+  width:64px;height:64px;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;font-weight:900;color:#fff;
+  background:linear-gradient(180deg,#4a55cc,#2a35aa);
+  box-shadow:0 5px 0 rgba(0,0,0,0.4), 0 0 24px rgba(100,120,255,0.5);
+  position:relative;
+  animation:resultPop 2.4s ease-in-out infinite;
+}
+@keyframes resultPop{
+  0%,100%{ transform:scale(1); box-shadow:0 5px 0 rgba(0,0,0,0.4),0 0 24px rgba(100,120,255,0.4); }
+  50%    { transform:scale(1.08); box-shadow:0 5px 0 rgba(0,0,0,0.4),0 0 36px rgba(100,140,255,0.7); }
+}
+/* sparkles around result */
+.splash-sparkle{
+  position:absolute;
+  font-size:16px;color:#6ef0c0;
+  animation:sparklePop 1.6s ease-in-out infinite;
+}
+@keyframes sparklePop{
+  0%,100%{ opacity:0.4;transform:scale(0.8); }
+  50%    { opacity:1;  transform:scale(1.2); }
+}
+
+/* ── Bottom section: loading bar + tip ── */
+.splash-bottom{
+  display:flex;flex-direction:column;align-items:center;
+  gap:14px;width:100%;
+}
+
+/* Loading bar */
+.splash-bar-wrap{
+  width:100%;max-width:340px;
+  height:22px;border-radius:11px;
+  background:rgba(255,255,255,0.06);
+  border:1.5px solid rgba(120,80,255,0.4);
+  overflow:hidden;position:relative;
+}
+.splash-bar-fill{
+  height:100%;border-radius:11px;
+  background:linear-gradient(90deg,#7a40ff,#9f60ff);
+  width:0%;
+  transition:width 0.1s linear;
+  position:relative;overflow:hidden;
+}
+/* diagonal stripe pattern on bar */
+.splash-bar-fill::after{
+  content:'';position:absolute;inset:0;
+  background:repeating-linear-gradient(
+    -45deg,
+    rgba(255,255,255,0.12) 0px,
+    rgba(255,255,255,0.12) 8px,
+    transparent 8px,
+    transparent 16px
+  );
+  animation:stripeMove 0.8s linear infinite;
+}
+@keyframes stripeMove{
+  from{ background-position:0 0; }
+  to  { background-position:22px 0; }
+}
+
+.splash-loading-text{
+  font-size:14px;font-weight:800;letter-spacing:2px;color:#ccc;
+  text-transform:uppercase;
+  margin-top:4px;
+}
+.splash-loading-text span{ color:#6ef0f0; }
+
+/* Tip card */
+.splash-tip{
+  width:100%;max-width:340px;
+  background:rgba(255,255,255,0.04);
+  border:1.5px solid rgba(140,80,255,0.4);
+  border-radius:14px;
+  padding:12px 14px;
+  display:flex;align-items:center;gap:12px;
+}
+.splash-tip-icon{
+  font-size:30px;flex:none;
+  filter:drop-shadow(0 0 8px rgba(255,220,80,0.6));
+}
+.splash-tip-text{
+  font-size:12px;font-weight:800;letter-spacing:1px;
+  color:#fff;text-transform:uppercase;line-height:1.5;
+}
+.splash-tip-text b{ color:#ffd23d; }
+.splash-tip-label{
+  font-size:11px;font-weight:900;letter-spacing:2px;
+  color:#a060ff;margin-bottom:2px;display:block;
+}
+
 </style>
 </head>
 <body>
 <div class="hex-bg"></div>
 
 <div id="app">
+  <!-- ════════════════════════════════════════════════════════════
+       SPLASH / LOADING SCREEN
+       Shown on first load. Fades out when loading bar hits 100%.
+  ════════════════════════════════════════════════════════════════ -->
+  <div id="splashScreen">
+
+    <!-- Floating decorative symbols (purple/cyan scattered) -->
+    <div class="splash-deco" style="color:#8040ff;top:8%;left:8%;animation-delay:0s">+</div>
+    <div class="splash-deco" style="color:#8040ff;top:14%;left:16%;font-size:13px;animation-delay:0.3s">◇</div>
+    <div class="splash-deco" style="color:#8040ff;top:20%;left:6%;font-size:11px;animation-delay:0.7s">○</div>
+    <div class="splash-deco" style="color:#8040ff;top:8%;right:10%;font-size:22px;animation-delay:0.2s">+</div>
+    <div class="splash-deco" style="color:#8040ff;top:15%;right:7%;font-size:16px;animation-delay:0.5s">○</div>
+    <div class="splash-deco" style="color:#00d4d4;top:32%;right:6%;font-size:18px;animation-delay:0.1s">✦</div>
+    <div class="splash-deco" style="color:#8040ff;top:38%;left:5%;font-size:14px;animation-delay:0.6s">✦</div>
+    <div class="splash-deco" style="color:#8040ff;bottom:30%;right:8%;font-size:13px;animation-delay:0.4s">+</div>
+    <div class="splash-deco" style="color:#00d4d4;bottom:22%;left:7%;font-size:16px;animation-delay:0.8s">✦</div>
+
+    <!-- ── TOP: crown + title ── -->
+    <div class="splash-top">
+
+      <!-- Crown SVG with rays -->
+      <div style="position:relative;width:160px;height:120px;display:flex;align-items:flex-end;justify-content:center;">
+        <!-- Rays behind crown -->
+        <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 160 120">
+          <g stroke="#ffd23d" stroke-width="3" stroke-linecap="round" opacity="0.7">
+            <line x1="80" y1="110" x2="80"  y2="78" />
+            <line x1="80" y1="110" x2="102" y2="82"/>
+            <line x1="80" y1="110" x2="118" y2="96"/>
+            <line x1="80" y1="110" x2="58"  y2="82"/>
+            <line x1="80" y1="110" x2="42"  y2="96"/>
+          </g>
+        </svg>
+        <!-- Crown SVG -->
+        <svg viewBox="0 0 120 90" width="120" height="90" style="position:relative;z-index:1">
+          <defs>
+            <linearGradient id="splCg" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%"   stop-color="#ffe566"/>
+              <stop offset="50%"  stop-color="#f5a200"/>
+              <stop offset="100%" stop-color="#c06800"/>
+            </linearGradient>
+            <filter id="splCglow">
+              <feGaussianBlur stdDeviation="3" result="b"/>
+              <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+          <!-- Crown body — 3 pointed peaks -->
+          <path d="M10 82 L18 36 L42 58 L60 10 L78 58 L102 36 L110 82 Z"
+                fill="url(#splCg)" stroke="#a86000" stroke-width="2.5"
+                stroke-linejoin="round" filter="url(#splCglow)"/>
+          <!-- inner sheen -->
+          <path d="M22 82 L28 46 L44 62 L60 22 L76 62 L92 46 L98 82 Z"
+                fill="rgba(255,240,120,0.18)"/>
+          <!-- base band -->
+          <rect x="8" y="78" width="104" height="14" rx="7"
+                fill="url(#splCg)" stroke="#906000" stroke-width="1.5"/>
+          <!-- base band highlight -->
+          <rect x="14" y="79" width="92" height="6" rx="3"
+                fill="rgba(255,245,140,0.35)"/>
+          <!-- diamond gem (game purple) -->
+          <polygon points="60,20 70,32 60,44 50,32"
+                   fill="#d34bff" stroke="#5500aa" stroke-width="1.5" filter="url(#splCglow)"/>
+          <polygon points="60,20 70,32 60,32 50,32"
+                   fill="rgba(255,200,255,0.45)"/>
+          <circle cx="56" cy="28" r="3" fill="rgba(255,255,255,0.7)"/>
+          <!-- crown tip balls -->
+          <circle cx="18" cy="33" r="5" fill="#ffe566" stroke="#a85800" stroke-width="1.5"/>
+          <circle cx="60" cy="7"  r="6" fill="#ffe566" stroke="#a85800" stroke-width="1.5"/>
+          <circle cx="102" cy="33" r="5" fill="#ffe566" stroke="#a85800" stroke-width="1.5"/>
+        </svg>
+      </div>
+
+      <!-- "2048" label with side lines -->
+      <div class="splash-sub-title">2048</div>
+
+      <!-- NEXUM logotype -->
+      <div class="splash-title">
+        <span class="splash-nex">NEX</span><span class="splash-um">UM</span>
+      </div>
+
+      <!-- Diamond divider -->
+      <div class="splash-divider">
+        <div class="splash-divider-line"></div>
+        <div class="splash-diamond"></div>
+        <div class="splash-divider-line r"></div>
+      </div>
+
+      <!-- Tagline -->
+      <div class="splash-tagline"><span>MERGE</span> BLOCKS. REACH HIGHER.</div>
+    </div>
+
+    <!-- ── MIDDLE: chain + merge demo ── -->
+    <div class="splash-mid">
+
+      <!-- Block progression chain: 2→2→4→8→16→32 -->
+      <div class="splash-chain">
+        <div class="splash-block" style="background:linear-gradient(180deg,#2e3460,#1e2448);font-size:22px;">2</div>
+        <div class="splash-arrow">→</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#2e3460,#1e2448);font-size:22px;">2</div>
+        <div class="splash-arrow">→</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#3a5098,#223078);font-size:22px;">4</div>
+        <div class="splash-arrow">→</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#f5c842,#d4820a);font-size:22px;">8</div>
+        <div class="splash-arrow">→</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#f5922e,#d46010);font-size:20px;">16</div>
+        <div class="splash-arrow">→</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#e84040,#b02020);font-size:20px;">32</div>
+      </div>
+
+      <!-- Merge animation: 2+2=4 -->
+      <div class="splash-merge-demo">
+        <!-- Two "2" blocks falling together -->
+        <div class="splash-merge-top">
+          <div class="splash-merge-block">2</div>
+          <div class="splash-merge-block">2</div>
+        </div>
+        <!-- Merge arrow with glow -->
+        <div class="splash-merge-arrow">
+          <svg viewBox="0 0 40 32" width="40" height="32" fill="none">
+            <defs>
+              <linearGradient id="arrowG" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%" stop-color="#4ef0c0"/>
+                <stop offset="100%" stop-color="#00a080"/>
+              </linearGradient>
+            </defs>
+            <path d="M20 4 L20 20 M10 14 L20 26 L30 14"
+                  stroke="url(#arrowG)" stroke-width="3.5"
+                  stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        </div>
+        <!-- Result "4" with sparkles -->
+        <div style="position:relative;display:flex;align-items:center;justify-content:center;">
+          <div class="splash-merge-result">4</div>
+          <span class="splash-sparkle" style="top:-8px;left:-18px;animation-delay:0s">✦</span>
+          <span class="splash-sparkle" style="top:-10px;right:-16px;animation-delay:0.3s;font-size:12px">✦</span>
+          <span class="splash-sparkle" style="bottom:-6px;left:-20px;animation-delay:0.6s;font-size:10px">✦</span>
+          <span class="splash-sparkle" style="bottom:-4px;right:-14px;animation-delay:0.9s">✦</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── BOTTOM: loading bar + tip ── -->
+    <div class="splash-bottom">
+      <!-- Loading bar -->
+      <div style="width:100%;max-width:340px;display:flex;flex-direction:column;align-items:center;gap:6px;">
+        <div class="splash-bar-wrap">
+          <div class="splash-bar-fill" id="splashBarFill"></div>
+        </div>
+        <div class="splash-loading-text">
+          LOADING... <span id="splashPct">0%</span>
+        </div>
+      </div>
+
+      <!-- Tip card -->
+      <div class="splash-tip">
+        <div class="splash-tip-icon">💡</div>
+        <div class="splash-tip-text">
+          <span class="splash-tip-label">TIP:</span>
+          MERGE SAME NUMBERS<br>TO CREATE <b>BIGGER</b> BLOCKS!
+        </div>
+      </div>
+    </div>
+
+  </div><!-- end splashScreen -->
+
 
   <!-- ===================== HOME SCREEN ===================== -->
   <div id="homeScreen">
@@ -1718,204 +2150,198 @@ body{
       <!-- Highest Block Card -->
       <div class="highest-card">
         <div class="highest-block" id="homeBlock">
-          <svg class="shield-svg" id="shieldSvg" viewBox="0 0 240 280" width="210" height="245" xmlns="http://www.w3.org/2000/svg" style="overflow:visible">
-            <defs>
-              <!-- Gold outer frame -->
-              <linearGradient id="gfOuter" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#ffe566"/>
-                <stop offset="40%"  stop-color="#f5a200"/>
-                <stop offset="100%" stop-color="#a85c00"/>
-              </linearGradient>
-              <!-- Gold inner lip -->
-              <linearGradient id="gfInner" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#ffd040"/>
-                <stop offset="100%" stop-color="#c07800"/>
-              </linearGradient>
-              <!-- Purple card body -->
-              <linearGradient id="gPurp" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#4a1c90"/>
-                <stop offset="100%" stop-color="#1a0048"/>
-              </linearGradient>
-              <!-- Rays -->
-              <radialGradient id="gRays" cx="50%" cy="48%" r="60%">
-                <stop offset="0%"   stop-color="rgba(150,60,255,0.55)"/>
-                <stop offset="100%" stop-color="rgba(20,0,60,0)"/>
-              </radialGradient>
-              <!-- Ribbon blue -->
-              <linearGradient id="gRibbon" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#4ab0ff"/>
-                <stop offset="50%"  stop-color="#1a72e8"/>
-                <stop offset="100%" stop-color="#0c4ab0"/>
-              </linearGradient>
-              <!-- Number fill -->
-              <linearGradient id="gNum" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#ffffff"/>
-                <stop offset="55%"  stop-color="#ddd0ff"/>
-                <stop offset="100%" stop-color="#b8a8f0"/>
-              </linearGradient>
-              <!-- Crown gold -->
-              <linearGradient id="gCrown" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="#ffe566"/>
-                <stop offset="60%"  stop-color="#f5a200"/>
-                <stop offset="100%" stop-color="#c06800"/>
-              </linearGradient>
-              <!-- Crown highlight -->
-              <linearGradient id="gCrownHi" x1="0%" y1="0%" x2="0%" y2="100%">
-                <stop offset="0%"   stop-color="rgba(255,245,150,0.7)"/>
-                <stop offset="100%" stop-color="rgba(255,200,50,0)"/>
-              </linearGradient>
-              <!-- Gem (game purple) -->
-              <linearGradient id="gGem" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%"   stop-color="#ee88ff"/>
-                <stop offset="45%"  stop-color="#d34bff"/>
-                <stop offset="100%" stop-color="#6600bb"/>
-              </linearGradient>
-              <!-- Gem highlight -->
-              <linearGradient id="gGemHi" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%"   stop-color="rgba(255,220,255,0.85)"/>
-                <stop offset="100%" stop-color="rgba(200,100,255,0)"/>
-              </linearGradient>
 
-              <filter id="fGlow" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="5" result="b"/>
-                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+          <svg class="shield-svg" id="shieldSvg"
+               viewBox="0 0 220 280" width="198" height="252"
+               xmlns="http://www.w3.org/2000/svg"
+               style="overflow:visible">
+            <defs>
+              <!-- Blue card gradient — bright royal blue center → darker edges -->
+              <linearGradient id="hbCardG" x1="30%" y1="0%" x2="70%" y2="100%">
+                <stop offset="0%"   stop-color="#3a7fff"/>
+                <stop offset="55%"  stop-color="#1a5de8"/>
+                <stop offset="100%" stop-color="#0e3ab0"/>
+              </linearGradient>
+              <!-- Card top-left radial highlight (bright inner glow) -->
+              <radialGradient id="hbCardGlow" cx="35%" cy="22%" r="55%">
+                <stop offset="0%"   stop-color="rgba(120,180,255,0.55)"/>
+                <stop offset="100%" stop-color="rgba(10,40,140,0)"/>
+              </radialGradient>
+              <!-- Bottom label strip -->
+              <linearGradient id="hbLabelG" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="rgba(10,40,160,0.82)"/>
+                <stop offset="100%" stop-color="rgba(5,20,100,0.95)"/>
+              </linearGradient>
+              <!-- Number: pure white with blue-grey shadow underneath -->
+              <filter id="hbNumShadow" x="-20%" y="-20%" width="140%" height="140%">
+                <feDropShadow dx="0" dy="5" stdDeviation="3"
+                              flood-color="#1040c0" flood-opacity="0.8"/>
               </filter>
-              <filter id="fShadow">
-                <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#220066" flood-opacity="0.9"/>
+              <!-- Card outer glow/shadow -->
+              <filter id="hbCardShadow" x="-15%" y="-10%" width="130%" height="130%">
+                <feDropShadow dx="0" dy="8" stdDeviation="10"
+                              flood-color="#050d30" flood-opacity="0.7"/>
               </filter>
-              <filter id="fRibbonShadow">
-                <feDropShadow dx="0" dy="3" stdDeviation="3" flood-color="#000055" flood-opacity="0.5"/>
-              </filter>
-              <filter id="fRibbonGlow" x="-10%" y="-30%" width="120%" height="160%">
-                <feGaussianBlur stdDeviation="3" result="blur"/>
-                <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
-              </filter>
-              <clipPath id="cardClip">
-                <rect x="14" y="54" width="212" height="192" rx="14"/>
+              <!-- clip card body -->
+              <clipPath id="hbClip">
+                <rect x="4" y="72" width="212" height="190" rx="26"/>
               </clipPath>
             </defs>
 
-            <!-- ══ CROWN (sits above card, overlapping top edge slightly) ══ -->
-            <!-- crown glow -->
-            <ellipse cx="120" cy="52" rx="42" ry="12" fill="rgba(255,180,0,0.25)" filter="url(#fGlow)"/>
-            <!-- crown body -->
-            <path d="M78 68 L82 38 L98 54 L120 22 L142 54 L158 38 L162 68 Z"
-                  fill="url(#gCrown)" stroke="#a86000" stroke-width="2" stroke-linejoin="round"/>
-            <!-- crown highlight layer -->
-            <path d="M86 68 L89 44 L102 57 L120 30 L138 57 L151 44 L154 68 Z"
-                  fill="url(#gCrownHi)" stroke="none"/>
-            <!-- crown base band -->
-            <rect x="76" y="64" width="88" height="16" rx="8"
-                  fill="url(#gCrown)" stroke="#906000" stroke-width="1.5"/>
-            <!-- base band highlight -->
-            <rect x="80" y="65" width="80" height="6" rx="3" fill="rgba(255,245,140,0.4)"/>
-            <!-- gem body -->
-            <polygon points="120,30 128,39 120,48 112,39"
-                     fill="url(#gGem)" stroke="#5500aa" stroke-width="1.5" filter="url(#fGlow)"/>
-            <!-- gem highlight -->
-            <polygon points="120,30 128,39 120,39 112,39"
-                     fill="url(#gGemHi)" opacity="0.7"/>
-            <!-- gem inner sparkle -->
-            <circle cx="116" cy="35" r="2.5" fill="rgba(255,255,255,0.8)"/>
+            <!-- ══ CROWN — premium 5-peak ══ -->
+            <defs>
+              <linearGradient id="hbCrownFront" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#ffe97a"/>
+                <stop offset="40%"  stop-color="#f5a800"/>
+                <stop offset="100%" stop-color="#b85e00"/>
+              </linearGradient>
+              <linearGradient id="hbCrownSide" x1="0%" y1="0%" x2="0%" y2="100%">
+                <stop offset="0%"   stop-color="#e89500"/>
+                <stop offset="100%" stop-color="#8a4000"/>
+              </linearGradient>
+              <radialGradient id="hbGemBlue" cx="35%" cy="30%">
+                <stop offset="0%"   stop-color="#a0e8ff"/>
+                <stop offset="50%"  stop-color="#1a9fff"/>
+                <stop offset="100%" stop-color="#0040c0"/>
+              </radialGradient>
+              <radialGradient id="hbGemRed" cx="35%" cy="30%">
+                <stop offset="0%"   stop-color="#ffaaaa"/>
+                <stop offset="50%"  stop-color="#ee2222"/>
+                <stop offset="100%" stop-color="#880000"/>
+              </radialGradient>
+              <filter id="hbCrownGlow" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="4" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+              <filter id="hbGemGlow" x="-60%" y="-60%" width="220%" height="220%">
+                <feGaussianBlur stdDeviation="3" result="b"/>
+                <feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>
+              </filter>
+            </defs>
 
-            <!-- ══ CARD FRAME — gold outer ══ -->
-            <rect x="6" y="68" width="228" height="190" rx="20"
-                  fill="url(#gfOuter)"
-                  filter="url(#fGlow)"/>
-            <!-- gold inner bevel -->
-            <rect x="12" y="74" width="216" height="178" rx="16"
-                  fill="url(#gfInner)" opacity="0.6"/>
+            <!-- Warm glow behind crown -->
+            <ellipse cx="110" cy="62" rx="52" ry="18" fill="rgba(255,160,0,0.22)" filter="url(#hbCrownGlow)"/>
 
-            <!-- ══ CARD BODY — purple ══ -->
-            <rect x="16" y="78" width="208" height="170" rx="13"
-                  fill="url(#gPurp)"/>
-
-            <!-- ══ RAYS ══ -->
-            <g clip-path="url(#cardClip)">
-              <g opacity="0.45" stroke="rgba(160,80,255,0.35)" stroke-width="1.2">
-                <line x1="120" y1="155" x2="120" y2="78"/>
-                <line x1="120" y1="155" x2="156" y2="82"/>
-                <line x1="120" y1="155" x2="188" y2="96"/>
-                <line x1="120" y1="155" x2="208" y2="120"/>
-                <line x1="120" y1="155" x2="212" y2="152"/>
-                <line x1="120" y1="155" x2="84"  y2="82"/>
-                <line x1="120" y1="155" x2="52"  y2="96"/>
-                <line x1="120" y1="155" x2="32"  y2="120"/>
-                <line x1="120" y1="155" x2="28"  y2="152"/>
-                <line x1="120" y1="155" x2="208" y2="185"/>
-                <line x1="120" y1="155" x2="32"  y2="185"/>
-                <line x1="120" y1="155" x2="180" y2="230"/>
-                <line x1="120" y1="155" x2="60"  y2="230"/>
-              </g>
-              <ellipse cx="120" cy="148" rx="80" ry="70" fill="url(#gRays)"/>
+            <!-- Ray dashes -->
+            <g stroke="#ffd23d" stroke-width="3" stroke-linecap="round" opacity="0.8">
+              <line x1="52"  y1="46" x2="40"  y2="38"/>
+              <line x1="47"  y1="60" x2="33"  y2="59"/>
+              <line x1="56"  y1="72" x2="44"  y2="78"/>
+              <line x1="168" y1="46" x2="180" y2="38"/>
+              <line x1="173" y1="60" x2="187" y2="59"/>
+              <line x1="164" y1="72" x2="176" y2="78"/>
+            </g>
+            <!-- Sparkles -->
+            <g fill="#7ad4ff">
+              <path d="M34 36 l1.8-4.5 1.8 4.5 4.5 1.8-4.5 1.8-1.8 4.5-1.8-4.5-4.5-1.8z"/>
+              <path d="M176 35 l1.6-4 1.6 4 4 1.6-4 1.6-1.6 4-1.6-4-4-1.6z"/>
             </g>
 
-            <!-- ══ CARD BORDER INNER HIGHLIGHT ══ -->
-            <rect x="16" y="78" width="208" height="170" rx="13"
-                  fill="none" stroke="rgba(255,255,255,0.08)" stroke-width="2"/>
+            <!-- ── Crown body (5 peaks) ── -->
+            <!-- Shadow layer -->
+            <path d="M62 70 L68 38 L82 52 L94 24 L110 8 L126 24 L138 52 L152 38 L158 70 Z"
+                  fill="rgba(0,0,0,0.25)" transform="translate(2,4)"/>
+            <!-- Main body -->
+            <path d="M62 70 L68 38 L82 52 L94 24 L110 8 L126 24 L138 52 L152 38 L158 70 Z"
+                  fill="url(#hbCrownFront)"
+                  stroke="#8a4800" stroke-width="2" stroke-linejoin="round"/>
+            <!-- Face highlight -->
+            <path d="M68 70 L73 44 L85 56 L96 30 L110 16 L124 30 L135 56 L147 44 L152 70 Z"
+                  fill="rgba(255,248,160,0.22)"/>
+            <!-- Left inner shadow -->
+            <path d="M62 70 L68 38 L82 52 L94 24 L110 8 L110 70 Z"
+                  fill="rgba(0,0,0,0.10)"/>
 
-            <!-- ══ SPARKLES ══ -->
-            <g fill="white">
-              <!-- 4-pointed star shape macro -->
-              <path d="M48 110 l2-5 2 5 5 2-5 2-2 5-2-5-5-2z" opacity="0.8"/>
-              <path d="M186 125 l1.5-4 1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5z" opacity="0.65"/>
-              <path d="M46 178 l1.5-4 1.5 4 4 1.5-4 1.5-1.5 4-1.5-4-4-1.5z" opacity="0.55"/>
-              <path d="M192 175 l1-3 1 3 3 1-3 1-1 3-1-3-3-1z" opacity="0.5"/>
-              <path d="M74 92  l1-3 1 3 3 1-3 1-1 3-1-3-3-1z" opacity="0.5"/>
-              <path d="M168 90 l1-3 1 3 3 1-3 1-1 3-1-3-3-1z" opacity="0.45"/>
-            </g>
+            <!-- ── Base band ── -->
+            <rect x="60" y="64" width="100" height="18" rx="9"
+                  fill="url(#hbCrownFront)" stroke="#7a4200" stroke-width="1.8"/>
+            <!-- Band top sheen -->
+            <rect x="64" y="65" width="92" height="7" rx="3.5"
+                  fill="rgba(255,250,160,0.50)"/>
+            <!-- Band bottom shadow -->
+            <rect x="60" y="76" width="100" height="6" rx="4"
+                  fill="rgba(0,0,0,0.20)"/>
+            <!-- Band rivets -->
+            <circle cx="74"  cy="73" r="3.5" fill="#ffe060" stroke="#8a5000" stroke-width="1.2"/>
+            <circle cx="146" cy="73" r="3.5" fill="#ffe060" stroke="#8a5000" stroke-width="1.2"/>
+            <circle cx="74"  cy="73" r="1.5" fill="rgba(255,255,255,0.6)"/>
+            <circle cx="146" cy="73" r="1.5" fill="rgba(255,255,255,0.6)"/>
 
-            <!-- ══ RIBBON — fully inside card, flush to bottom ══ -->
-            <rect x="-14" y="189" width="268" height="44" rx="0"
-                  fill="rgba(0,0,80,0.4)" filter="url(#fRibbonShadow)"/>
-            <!-- ribbon shape with V-notch pointing inward on each side -->
-            <path d="
-              M-28 189
-              L254 189
-              L254 233
-              L-28 233
-              L-14 211
-              Z
-            " fill="url(#gRibbon)"/>
-            <!-- right side V-notch -->
-            <path d="
-              M-14 189
-              L268 189
-              L254 211
-              L268 233
-              L-14 233
-              Z
-            " fill="url(#gRibbon)"/>
-            <!-- top sheen -->
-            <path d="M-28 189 L268 189 L268 200 L-28 200 Z" fill="rgba(255,255,255,0.22)"/>
-            <!-- border left side -->
-            <path d="M-28 189 L-14 211 L-28 233" fill="none" stroke="#80eeff" stroke-width="1.5" stroke-linejoin="round"/>
-            <!-- border right side -->
-            <path d="M268 189 L254 211 L268 233" fill="none" stroke="#80eeff" stroke-width="1.5" stroke-linejoin="round"/>
-            <!-- border top and bottom -->
-            <line x1="-28" y1="189" x2="268" y2="189" stroke="#80eeff" stroke-width="1.5"/>
-            <line x1="-28" y1="233" x2="268" y2="233" stroke="#80eeff" stroke-width="1.5"/>
-            <text x="120" y="217"
+            <!-- ── Peak tip gems ── -->
+            <!-- Left peak — red gem -->
+            <polygon points="68,38 74,45 68,52 62,45"
+                     fill="url(#hbGemRed)" filter="url(#hbGemGlow)"
+                     stroke="#550000" stroke-width="1"/>
+            <polygon points="68,38 74,45 68,45 62,45" fill="rgba(255,200,200,0.4)"/>
+            <circle cx="66" cy="42" r="1.8" fill="rgba(255,255,255,0.75)"/>
+            <!-- Right peak — red gem -->
+            <polygon points="152,38 158,45 152,52 146,45"
+                     fill="url(#hbGemRed)" filter="url(#hbGemGlow)"
+                     stroke="#550000" stroke-width="1"/>
+            <polygon points="152,38 158,45 152,45 146,45" fill="rgba(255,200,200,0.4)"/>
+            <circle cx="150" cy="42" r="1.8" fill="rgba(255,255,255,0.75)"/>
+
+            <!-- ── Centre top gem — large blue diamond ── -->
+            <polygon points="110,6 122,20 110,34 98,20"
+                     fill="url(#hbGemBlue)" filter="url(#hbGemGlow)"
+                     stroke="#003080" stroke-width="1.5"/>
+            <polygon points="110,6 122,20 110,20 98,20" fill="rgba(180,240,255,0.45)"/>
+            <circle cx="106" cy="13" r="3" fill="rgba(255,255,255,0.80)"/>
+
+            <!-- ══ CARD — blue rounded rectangle ══ -->
+            <rect x="4" y="72" width="212" height="190" rx="26"
+                  fill="url(#hbCardG)" filter="url(#hbCardShadow)"/>
+            <!-- Bright edge highlight (top-left inner border) -->
+            <rect x="4" y="72" width="212" height="190" rx="26"
+                  fill="none"
+                  stroke="rgba(120,180,255,0.55)"
+                  stroke-width="2.5"/>
+            <!-- Subtle top-left radial glow on card body -->
+            <rect x="4" y="72" width="212" height="190" rx="26"
+                  fill="url(#hbCardGlow)" clip-path="url(#hbClip)"/>
+            <!-- Very faint inner border inside the card -->
+            <rect x="9" y="77" width="202" height="180" rx="23"
+                  fill="none"
+                  stroke="rgba(255,255,255,0.10)"
+                  stroke-width="1.5"/>
+
+            <!-- ══ LABEL STRIP — bottom of card ══ -->
+            <rect x="4" y="218" width="212" height="44" rx="0"
+                  fill="url(#hbLabelG)" clip-path="url(#hbClip)"/>
+            <!-- thin separator line above label -->
+            <line x1="4" y1="218" x2="216" y2="218"
+                  stroke="rgba(255,255,255,0.12)" stroke-width="1.5"/>
+            <!-- rounded bottom of label matches card -->
+            <rect x="4" y="218" width="212" height="44" rx="0"
+                  fill="none"
+                  stroke="rgba(120,180,255,0.25)"
+                  stroke-width="0"/>
+            <text x="110" y="247"
                   text-anchor="middle"
                   font-family="'Baloo 2',Arial,sans-serif"
-                  font-size="18" font-weight="900"
-                  fill="white"
-                  paint-order="stroke"
-                  stroke="rgba(0,30,120,0.7)" stroke-width="3"
-                  letter-spacing="1.5">YOUR HIGHEST BLOCK</text>
+                  font-size="16" font-weight="900"
+                  letter-spacing="1.5"
+                  fill="white">YOUR HIGHEST BLOCK</text>
 
-            <!-- ══ NUMBER — drawn last so it appears above ribbon ══ -->
+            <!-- ══ NUMBER — white 3D with blue drop shadow ══ -->
+            <!-- Card body runs y=72 → y=218; visual centre = ~145.
+                 dominant-baseline="central" makes y the true mid-line. -->
             <text id="shieldNum"
-                  x="120" y="130"
+                  x="110" y="148"
                   text-anchor="middle"
+                  dominant-baseline="central"
                   font-family="'Baloo 2',Arial,sans-serif"
-                  font-size="110" font-weight="900"
-                  fill="url(#gNum)"
+                  font-size="140" font-weight="900"
+                  fill="#ffffff"
+                  filter="url(#hbNumShadow)"
+                  paint-order="stroke fill"
+                  stroke="rgba(20,60,200,0.35)"
+                  stroke-width="4"
                   letter-spacing="-6">2</text>
 
           </svg>
         </div>
-        <div class="highest-num" id="homeHighest" style="display:none">2</div>
+        <div class="highest-num"     id="homeHighest" style="display:none">2</div>
         <div class="highest-label-bar" id="homeBlockBar" style="display:none">YOUR HIGHEST BLOCK</div>
         <div class="highest-bottom-cap" id="homeBlockCap" style="display:none"></div>
       </div>
@@ -3074,14 +3500,38 @@ const GAP = 13;
 // GOAL is now dynamic — set per level in bootGame/fillBoardInitial
 let GOAL = 512;
 const COLORS = {
-  2:"#39a6e0", 4:"#e9962f", 8:"#ec5a8e", 16:"#a35d80", 32:"#a83c4a",
-  64:"#9a7bc8", 128:"#5fb0c9", 256:"#3fcf9b",
-  512:"#f9978e", 1024:"#99d95e", 2048:"#fc4160", 4096:"#477af0", 8192:"#fec88a",
-  16384:"#7697a8", 32768:"#a64568", 65536:"#b59860", 131072:"#8e6494",
-  262144:"#456780", 524288:"#974987", 1048576:"#b36b6c",
-  2097152:"#7d5db0", 4194304:"#9e993e", 8388608:"#6a946e", 16777216:"#52819b",
-  33554432:"#a97b59", 67108864:"#a9657a", 134217728:"#906175", 268435456:"#8d5a5f",
-  536870912:"#806f93", 1073741824:"#477777", 2147483648:"#659e8f", 4294967296:"#b1807c"
+  2:        "#1a8fd1",   // deep blue
+  4:        "#d4780a",   // deep orange
+  8:        "#d42060",   // deep pink/red
+  16:       "#8b2a6a",   // deep magenta
+  32:       "#922038",   // deep crimson
+  64:       "#6a3dbf",   // deep purple
+  128:      "#1a7fa8",   // deep teal-blue
+  256:      "#0d9e6e",   // deep emerald
+  512:      "#d94f3a",   // deep tomato
+  1024:     "#5fa010",   // deep lime-green
+  2048:     "#d91040",   // deep red
+  4096:     "#1a50d4",   // royal blue
+  8192:     "#c87800",   // deep amber
+  16384:    "#3a6888",   // deep slate-blue
+  32768:    "#8c1a50",   // deep rose
+  65536:    "#8a6e18",   // deep gold
+  131072:   "#6a2882",   // deep violet
+  262144:   "#1e4e6a",   // deep navy
+  524288:   "#7a1878",   // deep fuchsia
+  1048576:  "#962828",   // deep brick
+  2097152:  "#4a2898",   // deep indigo
+  4194304:  "#6e7200",   // deep olive
+  8388608:  "#285c30",   // deep forest
+  16777216: "#1a4e6e",   // deep ocean
+  33554432: "#8a4a1a",   // deep sienna
+  67108864: "#8a2840",   // deep burgundy
+  134217728:"#6e2050",   // deep plum
+  268435456:"#6e2828",   // deep maroon
+  536870912:"#4a3a78",   // deep slate-purple
+  1073741824:"#1a5858",  // deep dark-teal
+  2147483648:"#1e7060",  // deep jade
+  4294967296:"#8a4040"   // deep auburn
 };
 // Spawn pools per level: [value, weight]
 // Level 1-3: mostly 2s and 4s
@@ -3176,12 +3626,13 @@ function updateHome(){
   if(shieldNum){
     shieldNum.textContent = val;
     const len = val.length;
-    const fs = len <= 1 ? 110 : len === 2 ? 100 : len === 3 ? 88 : len === 4 ? 76 : 64;
+    // Font scales down for longer numbers to fit inside the card
+    const fs = len <= 1 ? 140 : len === 2 ? 130 : len === 3 ? 108 : len === 4 ? 88 : 70;
     shieldNum.setAttribute("font-size", fs);
-    const baseY = len <= 1 ? 160 : len === 2 ? 162 : len === 3 ? 164 : 166;
-    shieldNum.setAttribute("y", baseY);
-    // More spacing for multi-digit numbers
-    const ls = len <= 1 ? 0 : len === 2 ? 1 : len === 3 ? 2 : 3;
+    // dominant-baseline="central" keeps y=148 always at the true vertical
+    // centre of the card body (72→218), regardless of font size
+    shieldNum.setAttribute("y", "148");
+    const ls = len <= 1 ? -6 : len === 2 ? -4 : len === 3 ? -2 : 0;
     shieldNum.setAttribute("letter-spacing", ls);
   }
   const lv = $("#homeLevelText"); if(lv) lv.textContent = "LEVEL " + (journeyCompleted + 1);
@@ -3646,7 +4097,41 @@ function currentResult(){
   const result = nextPow2GE(sum);
   return {valid: path.length>=2, result, sum};
 }
-function setSel(obj,on){ obj.el.classList.toggle("sel",on); }
+/**
+ * Trigger a quick bounce animation on a tile element.
+ * Uses a CSS custom property --tile-pos so the animation
+ * preserves the tile's translate() position on the board.
+ */
+function bounceTile(el) {
+  if (!el) return;
+  // Store current translate as a CSS var so the keyframe can use it
+  const tx = el.style.transform || 'translate(0px,0px)';
+  el.style.setProperty('--tile-pos', tx);
+  // Re-trigger: remove class, force reflow, re-add
+  el.classList.remove('touch-bounce');
+  void el.offsetWidth;
+  el.classList.add('touch-bounce');
+  // Clean up class after animation ends
+  setTimeout(() => el.classList.remove('touch-bounce'), 300);
+}
+
+/**
+ * Vibrate the device for a short pulse.
+ * Uses the Web Vibration API (supported on Android Chrome, not iOS).
+ * @param {number} ms - duration in milliseconds
+ */
+function vibrate(ms) {
+  try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) {}
+}
+
+function setSel(obj, on) {
+  obj.el.classList.toggle("sel", on);
+  // Bounce + vibrate when a tile is added to the chain
+  if (on) {
+    bounceTile(obj.el);
+    vibrate(18); // short 18ms pulse per tile
+  }
+}
 function startDrag(obj){
   if(busy||!obj) return;
   if(tut.active){ if(!tut.allowed.has(obj.row+","+obj.col)) return; hideHand(); }
@@ -3680,6 +4165,8 @@ function endDrag(){
 
 function resolveMerge(used, res){
   busy = true;
+  // Stronger vibration on merge — scales with chain length
+  vibrate(Math.min(12 + used.length * 6, 60));
   const head = used[used.length-1];
   used.forEach(o=>{
     if(o===head) return;
@@ -3946,21 +4433,270 @@ document.getElementById("shopModal").addEventListener("click", function(e){
 });
 
 // ── Rewards ───────────────────────────────────────────────────
-function openRewards(){
+// ═══════════════════════════════════════════════════════════════
+//  DAILY REWARDS SYSTEM
+//  ─────────────────────────────────────────────────────────────
+//  How it works:
+//    • On first open each calendar day, the player can collect.
+//    • State is persisted in localStorage under key "dr_state".
+//    • State shape: { streak, lastDate, collected }
+//      - streak   : int   — current consecutive-day count (1-based)
+//      - lastDate : str   — ISO date (YYYY-MM-DD) of last collection
+//      - collected: bool[] — index 0 = day 1, marks claimed days
+//
+//  Daily gems (cycle repeats every 7 days):
+//    Day 1:10 | Day 2:15 | Day 3:20 | Day 4:25 | Day 5:30 | Day 6:35 | Day 7:75
+//
+//  Milestone bonuses (cumulative total streak days reached):
+//    Day  8 → +50  gems
+//    Day 15 → +100 gems
+//    Day 22 → +150 gems
+//    Day 30 → +250 gems
+// ═══════════════════════════════════════════════════════════════
+
+const DR_STORAGE_KEY = 'dr_state';
+
+// Gems awarded per day-in-cycle (index 0 = day 1 of cycle)
+const DR_DAY_GEMS = [10, 15, 20, 25, 30, 35, 75];
+
+// Milestone bonuses triggered when total streak reaches a threshold
+const DR_MILESTONES = [
+  { atDay: 8,  gems: 50  },
+  { atDay: 15, gems: 100 },
+  { atDay: 22, gems: 150 },
+  { atDay: 30, gems: 250 },
+];
+
+/** Load state from localStorage; returns default if not found. */
+function drLoadState() {
+  try {
+    const raw = localStorage.getItem(DR_STORAGE_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch(e) {}
+  return { streak: 0, lastDate: null, collected: [] };
+}
+
+/** Persist state to localStorage. */
+function drSaveState(state) {
+  try { localStorage.setItem(DR_STORAGE_KEY, JSON.stringify(state)); } catch(e) {}
+}
+
+/** Today as YYYY-MM-DD (local time). */
+function drToday() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+/** Calendar days between two YYYY-MM-DD strings. */
+function drDaysBetween(a, b) {
+  return Math.round((new Date(b) - new Date(a)) / 86400000);
+}
+
+/** True if the player hasn't collected yet today. */
+function drCanCollect(state) {
+  return state.lastDate !== drToday();
+}
+
+/**
+ * Compute the next streak value:
+ *   next day  → streak + 1
+ *   2+ days   → reset to 1
+ *   no history→ 1
+ */
+function drNextStreak(state) {
+  if (!state.lastDate) return 1;
+  const diff = drDaysBetween(state.lastDate, drToday());
+  if (diff === 1) return state.streak + 1;
+  if (diff  > 1) return 1;
+  return state.streak; // same day fallback
+}
+
+/**
+ * Perform collection:
+ *   1. Compute new streak
+ *   2. Pick gems for the day-in-cycle
+ *   3. Apply any milestone bonus
+ *   4. Save state + award gems
+ *   Returns { dayGems, bonusGems, totalGems, newStreak, milestone }
+ *   Returns null if already collected today.
+ */
+function drCollect() {
+  const state = drLoadState();
+  if (!drCanCollect(state)) return null;
+
+  const newStreak  = drNextStreak(state);
+  const cycleIndex = (newStreak - 1) % 7;          // 0–6
+  const dayGems    = DR_DAY_GEMS[cycleIndex];
+  const milestone  = DR_MILESTONES.find(m => m.atDay === newStreak) || null;
+  const bonusGems  = milestone ? milestone.gems : 0;
+  const totalGems  = dayGems + bonusGems;
+
+  // Mark this day as collected
+  const collected = state.collected || [];
+  collected[newStreak - 1] = true;
+
+  drSaveState({ streak: newStreak, lastDate: drToday(), collected });
+
+  // Award gems & refresh HUD
+  gems += totalGems;
+  const gemEl = document.querySelector('.hud-gems b');
+  if (gemEl) gemEl.textContent = gems;
+
+  return { dayGems, bonusGems, totalGems, newStreak, milestone };
+}
+
+/**
+ * Re-render the rewards modal UI to match current state:
+ *   - Updates the DAY counter
+ *   - Fills the milestone progress bar
+ *   - Dims/highlights/checks day cards
+ *   - Enables or disables the COLLECT button (with countdown)
+ */
+function drRenderUI() {
+  const state      = drLoadState();
+  const canCollect = drCanCollect(state);
+  const streak     = state.streak || 0;
+
+  // ── DAY counter (calendar icon) ──
+  const dayNumEl = document.querySelector('.rw-day-zero-num');
+  if (dayNumEl) dayNumEl.textContent = streak;
+
+  // ── Milestone progress bar (fills toward day 30) ──
+  const fillEl = document.querySelector('.rw-milestone-fill');
+  if (fillEl) fillEl.style.width = Math.min(100, (streak / 30) * 100) + '%';
+
+  // ── Milestone gift stops — dim unreached ones ──
+  document.querySelectorAll('.rw-gift-stop').forEach((el, i) => {
+    el.style.opacity = streak >= DR_MILESTONES[i].atDay ? '1' : '0.45';
+  });
+
+  // ── Day cards ──
+  // cyclePos: position within the current 7-day cycle (0-based)
+  const cyclePos    = streak % 7; // 0 = just completed cycle, 7th day lands here
+  const todayIndex  = canCollect ? (streak % 7) : ((streak - 1) % 7);
+
+  document.querySelectorAll('.rw-day-card').forEach((card, i) => {
+    card.classList.remove('today', 'rw-collected', 'rw-locked');
+    card.querySelector('.rw-check')?.remove();
+
+    if (canCollect && i === todayIndex) {
+      // Claimable right now
+      card.classList.add('today');
+    } else if ((!canCollect && i < todayIndex) || (!canCollect && i === todayIndex)) {
+      // Already claimed this cycle
+      card.classList.add('rw-collected');
+      const check = document.createElement('div');
+      check.className = 'rw-check';
+      check.textContent = '✓';
+      card.appendChild(check);
+    } else {
+      // Future day — locked
+      card.classList.add('rw-locked');
+    }
+  });
+
+  // ── COLLECT button ──
+  const btn = document.getElementById('rwCollect');
+  if (!btn) return;
+
+  if (canCollect) {
+    btn.disabled      = false;
+    btn.style.opacity = '1';
+    btn.style.cursor  = 'pointer';
+    btn.textContent   = 'COLLECT';
+  } else {
+    // Disable and show countdown to midnight
+    btn.disabled      = true;
+    btn.style.opacity = '0.45';
+    btn.style.cursor  = 'not-allowed';
+    const now      = new Date();
+    const midnight = new Date(now); midnight.setHours(24, 0, 0, 0);
+    const secs     = Math.round((midnight - now) / 1000);
+    const hh       = String(Math.floor(secs / 3600)).padStart(2, '0');
+    const mm       = String(Math.floor((secs % 3600) / 60)).padStart(2, '0');
+    btn.textContent = `Come back in ${hh}h ${mm}m`;
+  }
+}
+
+/** Brief toast popup showing gems earned. */
+function drShowToast(result) {
+  document.getElementById('drToast')?.remove();
+  const toast = document.createElement('div');
+  toast.id = 'drToast';
+  toast.style.cssText = `
+    position:fixed;bottom:120px;left:50%;transform:translateX(-50%);
+    background:linear-gradient(180deg,#9b3edd,#7825bf);color:#fff;
+    font-family:'Baloo 2',sans-serif;font-size:18px;font-weight:900;
+    padding:14px 28px;border-radius:16px;
+    box-shadow:0 6px 24px rgba(0,0,0,.55);z-index:9999;
+    text-align:center;animation:drToastIn 0.3s ease;letter-spacing:.5px;
+  `;
+  let msg = `+${result.dayGems} 💎`;
+  if (result.bonusGems > 0)
+    msg += `<br><span style="font-size:13px;opacity:.85">+${result.bonusGems} milestone bonus 🎁</span>`;
+  toast.innerHTML = msg;
+
+  // Inject animation + card styles once
+  if (!document.getElementById('drStyles')) {
+    const s = document.createElement('style');
+    s.id = 'drStyles';
+    s.textContent = `
+      @keyframes drToastIn {
+        from { opacity:0; transform:translateX(-50%) translateY(20px); }
+        to   { opacity:1; transform:translateX(-50%) translateY(0); }
+      }
+      .rw-day-card.rw-collected { opacity:.55; }
+      .rw-day-card.rw-locked    { opacity:.35; filter:grayscale(.4); }
+      .rw-check {
+        position:absolute; top:6px; right:8px;
+        font-size:18px; color:#4ee060;
+        text-shadow:0 1px 4px rgba(0,0,0,.5);
+        font-weight:900;
+      }
+    `;
+    document.head.appendChild(s);
+  }
+
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2500);
+}
+
+// ── Open / Close ──────────────────────────────────────────────
+
+function openRewards() {
+  drRenderUI();
   closeAllModals();
   setActiveNav(null, true);
   document.getElementById("rewardsModal").classList.add("open");
 }
-function closeRewards(){
+
+function closeRewards() {
   closeAllModals();
   setActiveNav("homeNavBtn", true);
 }
+
 document.getElementById("rewardsClose").addEventListener("click", closeRewards);
-document.getElementById("rwCollect").addEventListener("click", closeRewards);
-document.getElementById("rewardsModal").addEventListener("click", function(e){
-  if(e.target === this) closeRewards();
+
+document.getElementById("rewardsModal").addEventListener("click", function(e) {
+  if (e.target === this) closeRewards();
 });
+
 document.querySelector(".rewards-btn").addEventListener("click", openRewards);
+
+// ── COLLECT button ────────────────────────────────────────────
+document.getElementById("rwCollect").addEventListener("click", function() {
+  const result = drCollect();
+  if (!result) return; // already collected (button was disabled)
+  drRenderUI();
+  drShowToast(result);
+});
+
+// ── On load: update rewards dot if claimable today ────────────
+(function() {
+  const state = drLoadState();
+  const dot   = document.querySelector('.rewards-dot');
+  if (dot) dot.style.display = drCanCollect(state) ? 'block' : 'none';
+})();
 
 // ── Profile ───────────────────────────────────────────────────
 function updateProfile(){
@@ -4767,6 +5503,81 @@ document.getElementById("resetConfirmModal")
     // not on the card inside it
     if(e.target === this) closeResetConfirm();
   });
+
+
+// ════════════════════════════════════════════════════════════════
+//  SPLASH / LOADING SCREEN
+//
+//  Shows a branded loading screen before the home screen.
+//  The loading bar animates from 0% to 100% over ~2.8 seconds.
+//  At 100%: fade-out animation plays, then splash is hidden and
+//  home screen is revealed.
+//
+//  Tips rotate randomly each time the splash is shown.
+// ════════════════════════════════════════════════════════════════
+
+const SPLASH_TIPS = [
+  { label:"TIP:", text:"MERGE SAME NUMBERS<br>TO CREATE <b>BIGGER</b> BLOCKS!" },
+  { label:"TIP:", text:"CHAIN MORE TILES<br>FOR A <b>HIGHER COMBO</b>!" },
+  { label:"TIP:", text:"CONNECT 2→2→4→8<br>IN ONE SWIPE FOR <b>BONUS POINTS</b>!" },
+  { label:"TIP:", text:"REACH THE <b>GOAL BLOCK</b><br>TO COMPLETE EACH LEVEL!" },
+  { label:"DID YOU KNOW?", text:"TILES FALL FROM THE TOP<br>AFTER EACH <b>MERGE</b>!" },
+];
+
+function runSplash(){
+  const splash   = document.getElementById("splashScreen");
+  const barFill  = document.getElementById("splashBarFill");
+  const pctText  = document.getElementById("splashPct");
+  const tipText  = splash.querySelector(".splash-tip-text");
+  const tipLabel = splash.querySelector(".splash-tip-label");
+  if(!splash || !barFill) return;
+
+  // ── 1. Pick a random tip ──────────────────────────────────────
+  const tip = SPLASH_TIPS[Math.floor(Math.random() * SPLASH_TIPS.length)];
+  if(tipLabel) tipLabel.textContent = tip.label;
+  if(tipText)  tipText.innerHTML    = `<span class="splash-tip-label">${tip.label}</span>${tip.text}`;
+
+  // ── 2. Animate the loading bar ────────────────────────────────
+  // Total duration: ~2.8s
+  // We use small steps (every 40ms) so the percentage counter
+  // updates smoothly and the stripe animation looks fluid.
+  let pct        = 0;
+  const DURATION = 2800;  // ms total
+  const INTERVAL = 40;    // ms per tick
+  const steps    = DURATION / INTERVAL;          // ~70 ticks
+  const stepSize = 100 / steps;                  // % per tick
+
+  // Slightly randomise speed per tick for a more natural feel
+  const timer = setInterval(()=>{
+    // Add base step + small random jitter (±0.4%)
+    pct += stepSize + (Math.random() - 0.5) * 0.8;
+    pct  = Math.min(pct, 100);
+
+    barFill.style.width = pct + "%";
+    if(pctText) pctText.textContent = Math.round(pct) + "%";
+
+    if(pct >= 100){
+      clearInterval(timer);
+
+      // ── 3. Brief pause at 100%, then fade out ──────────────
+      setTimeout(()=>{
+        splash.classList.add("fade-out");
+
+        // ── 4. After fade, hide splash and show home ──────────
+        setTimeout(()=>{
+          splash.style.display = "none";
+          // homeScreen starts as display:none — must be shown explicitly
+          const hs = document.getElementById("homeScreen");
+          if(hs) hs.style.display = "flex";
+        }, 650); // matches CSS transition duration (0.6s + buffer)
+
+      }, 400); // pause at 100% before fading
+    }
+  }, INTERVAL);
+}
+
+// Run splash immediately on DOM ready
+runSplash();
 
 })();
 </script>
