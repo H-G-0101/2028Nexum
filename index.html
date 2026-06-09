@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="theme-color" content="#1a2a6e">
-<title>2048 Nexum</title>
+<title>2248 Nexum</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@600;700;800;900&display=swap" rel="stylesheet">
@@ -1664,7 +1664,7 @@ body{
   background:#070d2a;
   display:flex;flex-direction:column;
   align-items:center;justify-content:space-between;
-  padding:max(40px,env(safe-area-inset-top)) 24px max(32px,env(safe-area-inset-bottom));
+  padding:max(clamp(20px,4dvh,40px),env(safe-area-inset-top)) clamp(14px,4vw,24px) max(clamp(18px,3dvh,32px),env(safe-area-inset-bottom));
   overflow:hidden;
   transition:opacity 0.6s ease;
 }
@@ -1701,9 +1701,22 @@ body{
   pointer-events:none;
 }
 
-/* "2048" small label above NEXUM */
+/* Crown wrapper — scales down on small screens */
+.splash-crown{
+  position:relative;
+  width:clamp(110px,30vw,160px);
+  height:clamp(82px,22.5vw,120px);
+  display:flex;align-items:flex-end;justify-content:center;
+}
+.splash-crown svg.crown-main{
+  position:relative;z-index:1;
+  width:clamp(82px,22.5vw,120px);
+  height:auto;
+}
+
+/* "2248" small label above NEXUM */
 .splash-sub-title{
-  font-size:26px;font-weight:900;color:#fff;
+  font-size:clamp(20px,6vw,26px);font-weight:900;color:#fff;
   letter-spacing:4px;
   text-shadow:0 2px 0 rgba(0,0,0,0.4);
   margin-top:8px;
@@ -1724,14 +1737,14 @@ body{
   filter:drop-shadow(0 6px 0 rgba(0,0,0,0.5));
 }
 .splash-nex{
-  font-size:88px;font-weight:900;letter-spacing:-3px;
+  font-size:clamp(58px,19vw,88px);font-weight:900;letter-spacing:-3px;
   background:linear-gradient(180deg,#6ef0f0 0%,#00c8c8 50%,#009090 100%);
   -webkit-background-clip:text;-webkit-text-fill-color:transparent;
   background-clip:text;
   paint-order:stroke fill;
 }
 .splash-um{
-  font-size:88px;font-weight:900;letter-spacing:-3px;
+  font-size:clamp(58px,19vw,88px);font-weight:900;letter-spacing:-3px;
   color:#ffffff;
   text-shadow:none;
 }
@@ -1765,23 +1778,24 @@ body{
 /* ── Middle section: chain + merge demo ── */
 .splash-mid{
   display:flex;flex-direction:column;align-items:center;
-  gap:14px;width:100%;
+  gap:clamp(8px,1.8dvh,14px);width:100%;
 }
 
 /* Block chain row */
 .splash-chain{
   display:flex;align-items:center;justify-content:center;
-  gap:4px;width:100%;
+  gap:clamp(2px,0.8vw,4px);width:100%;
 }
 .splash-block{
-  width:52px;height:52px;border-radius:12px;
+  width:clamp(34px,10.5vw,52px);height:clamp(34px,10.5vw,52px);
+  border-radius:clamp(8px,2.5vw,12px);
   display:flex;align-items:center;justify-content:center;
-  font-size:20px;font-weight:900;color:#fff;
+  font-size:clamp(14px,4vw,20px);font-weight:900;color:#fff;
   box-shadow:0 4px 0 rgba(0,0,0,0.35), inset 0 2px 0 rgba(255,255,255,0.2);
   flex:none;
 }
 .splash-arrow{
-  font-size:18px;color:rgba(255,255,255,0.45);flex:none;
+  font-size:clamp(12px,3.5vw,18px);color:rgba(255,255,255,0.45);flex:none;
   font-weight:900;
 }
 
@@ -1794,9 +1808,10 @@ body{
   display:flex;gap:24px;align-items:flex-end;
 }
 .splash-merge-block{
-  width:56px;height:56px;border-radius:14px;
+  width:clamp(44px,13vw,56px);height:clamp(44px,13vw,56px);
+  border-radius:clamp(10px,3vw,14px);
   display:flex;align-items:center;justify-content:center;
-  font-size:24px;font-weight:900;color:#fff;
+  font-size:clamp(18px,5.5vw,24px);font-weight:900;color:#fff;
   background:linear-gradient(180deg,#3a4090,#252860);
   box-shadow:0 4px 0 rgba(0,0,0,0.35);
   animation:mergeTilt 2.4s ease-in-out infinite;
@@ -1816,9 +1831,10 @@ body{
   50%    { opacity:1;  transform:scaleY(1.15); }
 }
 .splash-merge-result{
-  width:64px;height:64px;border-radius:16px;
+  width:clamp(50px,15vw,64px);height:clamp(50px,15vw,64px);
+  border-radius:clamp(12px,3.5vw,16px);
   display:flex;align-items:center;justify-content:center;
-  font-size:28px;font-weight:900;color:#fff;
+  font-size:clamp(22px,6.5vw,28px);font-weight:900;color:#fff;
   background:linear-gradient(180deg,#4a55cc,#2a35aa);
   box-shadow:0 5px 0 rgba(0,0,0,0.4), 0 0 24px rgba(100,120,255,0.5);
   position:relative;
@@ -1842,7 +1858,7 @@ body{
 /* ── Bottom section: loading bar + tip ── */
 .splash-bottom{
   display:flex;flex-direction:column;align-items:center;
-  gap:14px;width:100%;
+  gap:clamp(8px,1.8dvh,14px);width:100%;
 }
 
 /* Loading bar */
@@ -1907,6 +1923,30 @@ body{
   color:#a060ff;margin-bottom:2px;display:block;
 }
 
+/* ── Short screens: compact everything so nothing gets clipped ── */
+@media (max-height:670px){
+  .splash-crown{ width:96px;height:70px; }
+  .splash-crown svg.crown-main{ width:70px; }
+  .crown-rays{ width:96px;height:48px; }
+  .splash-nex,.splash-um{ font-size:clamp(48px,16vw,64px); }
+  .splash-sub-title{ font-size:18px;margin-top:4px; }
+  .splash-tagline{ font-size:12px;margin-top:4px; }
+  .splash-divider{ margin-top:4px; }
+  .splash-merge-block{ width:42px;height:42px;font-size:17px; }
+  .splash-merge-result{ width:48px;height:48px;font-size:20px; }
+  .splash-merge-arrow svg{ width:30px;height:24px; }
+  .splash-tip{ padding:8px 12px; }
+  .splash-tip-icon{ font-size:24px; }
+  .splash-tip-text{ font-size:11px;line-height:1.35; }
+  .splash-bar-wrap{ height:18px;border-radius:9px; }
+  .splash-loading-text{ font-size:12px;margin-top:2px; }
+}
+@media (max-height:560px){
+  .splash-chain{ display:none; }
+  .splash-crown{ width:80px;height:56px; }
+  .splash-crown svg.crown-main{ width:56px; }
+}
+
 </style>
 </head>
 <body>
@@ -1934,7 +1974,7 @@ body{
     <div class="splash-top">
 
       <!-- Crown SVG with rays -->
-      <div style="position:relative;width:160px;height:120px;display:flex;align-items:flex-end;justify-content:center;">
+      <div class="splash-crown">
         <!-- Rays behind crown -->
         <svg style="position:absolute;top:0;left:0;width:100%;height:100%;pointer-events:none" viewBox="0 0 160 120">
           <g stroke="#ffd23d" stroke-width="3" stroke-linecap="round" opacity="0.7">
@@ -1946,7 +1986,7 @@ body{
           </g>
         </svg>
         <!-- Crown SVG -->
-        <svg viewBox="0 0 120 90" width="120" height="90" style="position:relative;z-index:1">
+        <svg class="crown-main" viewBox="0 0 120 90" width="120" height="90">
           <defs>
             <linearGradient id="splCg" x1="0%" y1="0%" x2="0%" y2="100%">
               <stop offset="0%"   stop-color="#ffe566"/>
@@ -1984,8 +2024,8 @@ body{
         </svg>
       </div>
 
-      <!-- "2048" label with side lines -->
-      <div class="splash-sub-title">2048</div>
+      <!-- "2248" label with side lines -->
+      <div class="splash-sub-title">2248</div>
 
       <!-- NEXUM logotype -->
       <div class="splash-title">
@@ -2008,17 +2048,17 @@ body{
 
       <!-- Block progression chain: 2→2→4→8→16→32 -->
       <div class="splash-chain">
-        <div class="splash-block" style="background:linear-gradient(180deg,#2e3460,#1e2448);font-size:22px;">2</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#2e3460,#1e2448);">2</div>
         <div class="splash-arrow">→</div>
-        <div class="splash-block" style="background:linear-gradient(180deg,#2e3460,#1e2448);font-size:22px;">2</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#2e3460,#1e2448);">2</div>
         <div class="splash-arrow">→</div>
-        <div class="splash-block" style="background:linear-gradient(180deg,#3a5098,#223078);font-size:22px;">4</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#3a5098,#223078);">4</div>
         <div class="splash-arrow">→</div>
-        <div class="splash-block" style="background:linear-gradient(180deg,#f5c842,#d4820a);font-size:22px;">8</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#f5c842,#d4820a);">8</div>
         <div class="splash-arrow">→</div>
-        <div class="splash-block" style="background:linear-gradient(180deg,#f5922e,#d46010);font-size:20px;">16</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#f5922e,#d46010);">16</div>
         <div class="splash-arrow">→</div>
-        <div class="splash-block" style="background:linear-gradient(180deg,#e84040,#b02020);font-size:20px;">32</div>
+        <div class="splash-block" style="background:linear-gradient(180deg,#e84040,#b02020);">32</div>
       </div>
 
       <!-- Merge animation: 2+2=4 -->
@@ -3183,11 +3223,12 @@ body{
                 <line x1="6" y1="6" x2="42" y2="42" stroke="#e82020" stroke-width="3.5" stroke-linecap="round"/>
               </svg>
             </div>
-            <div class="pause-sett-btn" title="Sound">
+            <div class="pause-sett-btn" title="Sound" id="pauseSoundBtn">
               <svg viewBox="0 0 48 48" width="28" height="28">
                 <path d="M10 18 L10 30 L18 30 L30 38 L30 10 L18 18 Z" fill="#60d0f0"/>
                 <path d="M34 18 Q40 24 34 30" stroke="#60d0f0" stroke-width="3" stroke-linecap="round" fill="none"/>
                 <path d="M37 13 Q46 24 37 35" stroke="#60d0f0" stroke-width="3" stroke-linecap="round" fill="none"/>
+                <line id="pauseSoundSlash" x1="6" y1="6" x2="42" y2="42" stroke="#e82020" stroke-width="3.5" stroke-linecap="round" style="display:none"/>
               </svg>
             </div>
             <div class="pause-sett-btn" title="Vibration">
@@ -3968,6 +4009,37 @@ function startForLevel(n){ return n <= 3 ? 2 : Math.pow(2, n - 2); }
 // Inverse of goalForLevel: which level has this goal value
 function levelForGoal(goal){ return Math.max(1, Math.round(Math.log2(goal / 512)) + 1); }
 
+// ── Real-time phase progress ────────────────────────────────────
+// rawPhaseProgress(): [0..1] estimate of how close the board is to the
+// GOAL — counts doubling steps of the biggest tile (B) plus the partial
+// build-up of the support tile (S) needed to pair with it.
+// phaseBase: raw value captured when the phase STARTS. The visible bar
+// maps [phaseBase..1] onto [50%..100%], so every phase begins exactly
+// at half (mid chip = previous objective) and fills live toward GOAL.
+let phaseBase = 0;
+function rawPhaseProgress(){
+  let B = 2, S = 2, T = 2;   // top 3 tiles on the board
+  for(let r = 0; r < ROWS; r++){
+    for(let c = 0; c < COLS; c++){
+      const o = board[r] && board[r][c]; if(!o) continue;
+      if(o.value >= B){ T = S; S = B; B = o.value; }
+      else if(o.value >= S){ T = S; S = o.value; }
+      else if(o.value > T){ T = o.value; }
+    }
+  }
+  if(B >= GOAL || highest >= GOAL) return 1;
+  const midV       = midForLevel(level);
+  const stepsTotal = Math.max(1, Math.log2(GOAL) - Math.log2(midV));
+  const stepsDone  = Math.max(0, Math.log2(B) - Math.log2(midV));
+  // subT: partial build-up of the 3rd tile toward the 2nd (extra granularity
+  // so the bar moves on smaller merges too, not only top-tile milestones)
+  const subT = Math.min(1, (Math.log2(Math.max(T, 2)) - 1) / Math.max(1, Math.log2(Math.max(S, 4)) - 1));
+  // sub: how built the 2nd copy of B is (log scale), in [0..1]
+  const sub = Math.min(1, ((Math.log2(Math.max(S, 2)) - 1) + subT * 0.999) / Math.max(1, Math.log2(B) - 1));
+  return Math.min(0.995, (stepsDone + sub * 0.999) / stepsTotal);
+}
+function markPhaseStart(){ phaseBase = rawPhaseProgress(); }
+
 function updateProgress(){
   const goalVal  = goalForLevel(level);
   const midVal   = midForLevel(level);
@@ -4000,14 +4072,18 @@ function updateProgress(){
     goalChip.style.color = isLightColor(colorFor(goalVal)) ? "#33333f" : "#fff";
   }
 
-  // Bar fill: start (0%) -> mid (50%) -> goal (100%), log scale
-  const logStart = Math.log2(startVal);
-  const logMid   = Math.log2(midVal);
-  const logGoal  = Math.log2(goalVal);
-  const logNow   = Math.log2(Math.max(highest, startVal));
+  // Bar fill: EVERY phase starts at 50% (mid chip = conquered previous
+  // objective) and fills in REAL TIME toward 100% as the player builds
+  // the GOAL block. Progress made within the phase is measured against
+  // the snapshot taken at phase start (phaseBase), so leftover support
+  // tiles never inflate the starting position.
   let ratio;
-  if(logNow <= logMid) ratio = 0.5 * (logNow - logStart) / Math.max(0.0001, logMid - logStart);
-  else                 ratio = 0.5 + 0.5 * (logNow - logMid) / Math.max(0.0001, logGoal - logMid);
+  if(highest >= goalVal){
+    ratio = 1;                                   // phase won → full bar
+  } else {
+    const raw = rawPhaseProgress();
+    ratio = 0.5 + 0.5 * Math.max(0, (raw - phaseBase) / Math.max(0.0001, 1 - phaseBase));
+  }
   ratio = Math.min(1, Math.max(0, ratio));
 
   const pfillEl = $("#pfill");
@@ -4094,6 +4170,10 @@ function drawLink(){
 function currentResult(){
   if(path.length<2) return {valid:false,result:path.length?path[0].value:0};
   const sum = path.reduce((a,o)=>a+o.value,0);
+  // ORIGINAL-GAME LOGIC: a chain CAN overshoot the phase GOAL — the block
+  // is created at its real value (e.g. 1024 when the goal was 512), the
+  // phase is won, the LEVEL UP modal celebrates the block actually made,
+  // and the next objective continues from it (advancePhase doubles it).
   const result = nextPow2GE(sum);
   return {valid: path.length>=2, result, sum};
 }
@@ -4124,6 +4204,84 @@ function vibrate(ms) {
   try { if (navigator.vibrate) navigator.vibrate(ms); } catch(e) {}
 }
 
+// ── Tap / chain sound effects (Web Audio — no asset files) ──────
+// Mirrors the reference game: each tile added to the chain plays a
+// short pluck one step up a pentatonic ladder (~G4 base), backtracking
+// plays a softer low pop, and releasing the chain plays a quick
+// ascending sweep that gets longer with the chain.
+let sfxOn = true;
+try{ const s = localStorage.getItem("sfx2248"); if(s !== null) sfxOn = (s === "1"); }catch(e){}
+function saveSfx(){ try{ localStorage.setItem("sfx2248", sfxOn ? "1" : "0"); }catch(e){} }
+
+let _actx = null;
+function actx(){
+  if(!_actx){
+    try{ _actx = new (window.AudioContext || window.webkitAudioContext)(); }
+    catch(e){ return null; }
+  }
+  if(_actx && _actx.state === "suspended"){ try{ _actx.resume(); }catch(e){} }
+  return _actx;
+}
+// Pentatonic steps (semitones above the base note)
+const SFX_SCALE = [0,2,4,7,9,12,14,16,19,21,24,26,28,31,33,36];
+const SFX_BASE  = 392; // ~G4, matches the reference game's tap pitch
+function pluck(freq, dur, vol, type, delay){
+  const ctx = actx(); if(!ctx) return;
+  const t = ctx.currentTime + (delay || 0);
+  const o = ctx.createOscillator(), g = ctx.createGain();
+  o.type = type || "triangle";
+  o.frequency.setValueAtTime(freq, t);
+  g.gain.setValueAtTime(0.0001, t);
+  g.gain.exponentialRampToValueAtTime(vol, t + 0.008);
+  g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+  o.connect(g); g.connect(ctx.destination);
+  o.start(t); o.stop(t + dur + 0.02);
+}
+function linkSound(i){      // tile added — note climbs with chain length
+  if(!sfxOn) return;
+  const st = SFX_SCALE[Math.min(i, SFX_SCALE.length - 1)];
+  pluck(SFX_BASE * Math.pow(2, st / 12), 0.09, 0.20, "triangle");
+}
+function unlinkSound(i){    // backtracked — softer, one octave down
+  if(!sfxOn) return;
+  const st = SFX_SCALE[Math.max(0, Math.min(i, SFX_SCALE.length - 1))];
+  pluck(SFX_BASE * Math.pow(2, st / 12) * 0.5, 0.07, 0.10, "sine");
+}
+function mergeSound(len){   // chain released — ascending sweep
+  if(!sfxOn) return;
+  const notes = Math.min(3 + Math.floor(len / 3), 6);
+  for(let k = 0; k < notes; k++){
+    const st = SFX_SCALE[Math.min(k + 4, SFX_SCALE.length - 1)];
+    pluck(SFX_BASE * Math.pow(2, st / 12), 0.10, 0.16, "triangle", k * 0.035);
+  }
+}
+function winSound(){        // goal block made — bright rising fanfare
+  if(!sfxOn) return;
+  // Major arpeggio G4-B4-D5-G5 + high sparkle, like the reference game
+  const semis = [0, 4, 7, 12, 16, 19];
+  semis.forEach((st, k) => {
+    pluck(SFX_BASE * Math.pow(2, st / 12), 0.22, 0.18, "triangle", k * 0.07);
+    pluck(SFX_BASE * Math.pow(2, (st + 12) / 12), 0.18, 0.07, "sine", k * 0.07); // octave shimmer
+  });
+  pluck(SFX_BASE * 8, 0.35, 0.10, "sine", semis.length * 0.07);                  // final sparkle
+}
+function gemSound(delay){   // one gem collected — short bright ding
+  if(!sfxOn) return;
+  pluck(1568, 0.10, 0.14, "sine", delay || 0);          // G6
+  pluck(2349, 0.08, 0.06, "sine", (delay || 0) + 0.01); // D7 overtone sparkle
+}
+function gemBurst(n){       // several gems flying to the counter
+  if(!sfxOn) return;
+  const count = Math.min(Math.max(1, n), 8);
+  for(let k = 0; k < count; k++) gemSound(k * 0.07);
+}
+function goalSound(){       // new GOAL revealed on the bar / overlay
+  if(!sfxOn) return;
+  pluck(SFX_BASE * 2, 0.12, 0.14, "triangle", 0);     // G5
+  pluck(SFX_BASE * 3, 0.16, 0.14, "triangle", 0.09);  // D6
+  pluck(SFX_BASE * 4, 0.22, 0.10, "sine",     0.18);  // G6 shimmer
+}
+
 function setSel(obj, on) {
   obj.el.classList.toggle("sel", on);
   // Bounce + vibrate when a tile is added to the chain
@@ -4136,7 +4294,7 @@ function startDrag(obj){
   if(busy||!obj) return;
   if(tut.active){ if(!tut.allowed.has(obj.row+","+obj.col)) return; hideHand(); }
   else if(!playing) return;
-  dragging=true; path=[obj]; setSel(obj,true); drawLink();
+  dragging=true; path=[obj]; setSel(obj,true); drawLink(); linkSound(0);
 }
 function moveDrag(obj){
   if(!dragging||!obj) return;
@@ -4144,12 +4302,12 @@ function moveDrag(obj){
   const last = path[path.length-1];
   if(obj===last) return;
   if(path.length>=2 && obj===path[path.length-2]){
-    setSel(last,false); path.pop(); drawLink(); return;
+    setSel(last,false); path.pop(); drawLink(); unlinkSound(path.length-1); return;
   }
   if(path.indexOf(obj)!==-1) return;
   if(!adjacent(obj,last)) return;
   if(!canExtend(path, obj.value)) return;
-  path.push(obj); setSel(obj,true); drawLink();
+  path.push(obj); setSel(obj,true); drawLink(); linkSound(path.length-1);
 }
 function endDrag(){
   if(!dragging) return;
@@ -4167,6 +4325,7 @@ function resolveMerge(used, res){
   busy = true;
   // Stronger vibration on merge — scales with chain length
   vibrate(Math.min(12 + used.length * 6, 60));
+  mergeSound(used.length);
   const head = used[used.length-1];
   used.forEach(o=>{
     if(o===head) return;
@@ -4181,9 +4340,11 @@ function resolveMerge(used, res){
   styleTile(head);
   head.el.classList.remove("pop"); void head.el.offsetWidth; head.el.classList.add("pop");
   score += res.result;
-  if(res.result>=128) gems += 1;
+  if(res.result>=128){ gems += 1; gemSound(0.12); }
   if(res.result>highest) highest = res.result;
-  bumpBest();
+  // NOTE: bestBlock (home card) is NOT updated here — it only updates
+  // in win(), so the home card always shows the highest block from the
+  // last successfully COMPLETED phase, never from a run in progress.
   floatScore(head, "+"+res.result);
   updateHUD(); updateProgress();
   setTimeout(()=>{
@@ -4231,6 +4392,8 @@ function win(){
   savePhaseSnapshot();
 
   if(level > journeyCompleted) journeyCompleted = level; // unlock next phase in map
+  bumpBest();                                  // phase completed → confirm highest block for home card
+  winSound();                                  // bright fanfare with the confetti
   confetti();                                  // burst inside the board first
   setTimeout(()=>showLevelUp(highest), 850);   // modal slides up afterwards
 }
@@ -4300,12 +4463,13 @@ function advancePhase(){
   level = levelForGoal(highest * 2);     // next objective = double the tile just reached
   GOAL  = goalForLevel(level);
   if(level - 1 > journeyCompleted) journeyCompleted = level - 1;
+  markPhaseStart();                      // bar restarts at 50% for the new phase
   updateHUD(); updateProgress();
   showStartOverlay();   // GOAL / Tap to Start before the next phase
   saveState();
 }
-$("#luClaim").addEventListener("click",()=>{ gems += LU_BASE_REWARD*luMult; updateHUD(); advancePhase(); });
-$("#luNo").addEventListener("click",()=>{ gems += LU_BASE_REWARD; updateHUD(); advancePhase(); });
+$("#luClaim").addEventListener("click",()=>{ const amt = LU_BASE_REWARD*luMult; gems += amt; gemBurst(amt); updateHUD(); advancePhase(); });
+$("#luNo").addEventListener("click",()=>{ gems += LU_BASE_REWARD; gemBurst(LU_BASE_REWARD); updateHUD(); advancePhase(); });
 $("#luClose").addEventListener("click",()=>{ advancePhase(); });
 
 // Pointer events
@@ -4372,6 +4536,7 @@ document.getElementById("pauseRestartBtn").addEventListener("click",()=>{
   // fillBoardInitial() will automatically use phaseSnapshot[level]
   // (path A) and shuffle positions — guaranteeing same pool, new layout.
   fillBoardInitial();
+  markPhaseStart();                      // bar restarts at 50% for the retry
 
   updateHUD();
   updateProgress();
@@ -4539,6 +4704,7 @@ function drCollect() {
 
   // Award gems & refresh HUD
   gems += totalGems;
+  gemBurst(Math.min(totalGems, 8));
   const gemEl = document.querySelector('.hud-gems b');
   if (gemEl) gemEl.textContent = gems;
 
@@ -4864,6 +5030,7 @@ function showStartOverlay(){
     chip.style.color = isLightColor(base) ? "#33333f" : "#fff";
   }
   $("#startOverlay").classList.remove("hidden");
+  goalSound();          // chime as the new GOAL is presented
 }
 function dismissStartOverlay(){
   const ov = $("#startOverlay");
@@ -4878,7 +5045,7 @@ function saveState(){
   if(tut.active) return;
   try{
     const grid = board.map(row=>row.map(o=>o?o.value:0));
-    const st = { v:1, grid, level, score, highest, journeyCompleted };
+    const st = { v:1, grid, level, score, highest, journeyCompleted, phaseBase };
     localStorage.setItem("save2248", JSON.stringify(st));
     localStorage.setItem("best2248", String(bestBlock));
   }catch(e){}
@@ -4904,6 +5071,9 @@ function restoreState(st){
     const v = (st.grid[r] && st.grid[r][c]) ? st.grid[r][c] : randSpawn();
     board[r][c] = makeTile(v,c,r);
   }
+  // Restore the phase-start baseline so the bar doesn't shift on reload;
+  // older saves without it fall back to the current board snapshot.
+  phaseBase = (typeof st.phaseBase === "number") ? st.phaseBase : rawPhaseProgress();
   updateHUD(); updateProgress();
 }
 
@@ -4912,6 +5082,7 @@ function bootGame(){
   GOAL = goalForLevel(level);
   highest = 2;
   fillBoardInitial();
+  markPhaseStart();                      // bar starts at 50% for this phase
   updateHUD();
   updateProgress();
   showStartOverlay();   // show GOAL / Tap to Start before the phase begins
@@ -5358,6 +5529,31 @@ function bindToggle(id){
 }
 bindToggle("stVibration");
 bindToggle("stSfx");
+
+// ── SFX on/off wiring ───────────────────────────────────────────
+// One persisted flag (sfxOn) drives both the settings toggle and the
+// speaker button inside the pause menu.
+function refreshSfxUI(){
+  const t = document.getElementById("stSfx");
+  if(t) t.classList.toggle("on", sfxOn);
+  const sl = document.getElementById("pauseSoundSlash");
+  if(sl) sl.style.display = sfxOn ? "none" : "";
+}
+// Settings toggle → bindToggle already flips the class; read it back
+const _stSfxBtn = document.getElementById("stSfx");
+if(_stSfxBtn) _stSfxBtn.addEventListener("click", () => {
+  sfxOn = _stSfxBtn.classList.contains("on");
+  saveSfx(); refreshSfxUI();
+  if(sfxOn) linkSound(0);            // tiny audible confirmation
+});
+// Pause speaker button → toggles the same flag
+const _pauseSoundBtn = document.getElementById("pauseSoundBtn");
+if(_pauseSoundBtn) _pauseSoundBtn.addEventListener("click", () => {
+  sfxOn = !sfxOn;
+  saveSfx(); refreshSfxUI();
+  if(sfxOn) linkSound(0);            // tiny audible confirmation
+});
+refreshSfxUI();
 
 // ── Music slider ───────────────────────────────────────────────
 const musicSlider = document.getElementById("stMusic");
