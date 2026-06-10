@@ -628,6 +628,67 @@ body{
 /* ================================================================
    SHOP MODAL
 ================================================================ */
+/* ── Double Up offer ── */
+#duModal{
+  position:fixed;inset:0;z-index:60;
+  background:rgba(2,4,18,0.82);
+  display:flex;align-items:center;justify-content:center;
+}
+#duModal.hidden{display:none;}
+.du-card{
+  width:min(88vw,350px);
+  background:#13235e;
+  border-radius:20px;overflow:hidden;
+  box-shadow:0 16px 50px rgba(0,0,0,0.6);
+  animation:duIn .3s cubic-bezier(.2,1.4,.4,1);
+}
+@keyframes duIn{ from{opacity:0;transform:scale(.85);} to{opacity:1;transform:scale(1);} }
+.du-header{
+  position:relative;
+  background:linear-gradient(180deg,#3ec3f0,#1273d8);
+  padding:14px 0;text-align:center;
+}
+.du-title{font-size:26px;font-weight:900;color:#fff;letter-spacing:1px;}
+.du-close{
+  position:absolute;right:12px;top:50%;transform:translateY(-50%);
+  width:34px;height:34px;border-radius:50%;
+  background:#2a2a78;display:flex;align-items:center;justify-content:center;
+  cursor:pointer;
+}
+.du-body{padding:30px 24px 26px;display:flex;flex-direction:column;align-items:center;gap:16px;}
+.du-blocks{display:flex;align-items:center;gap:16px;margin-bottom:14px;}
+.du-blk{
+  width:86px;height:86px;border-radius:16px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:26px;font-weight:900;color:#fff;
+}
+.du-gold-wrap{position:relative;}
+.du-crown{position:absolute;top:-20px;left:50%;transform:translateX(-50%);}
+.du-blk-gold{
+  background:linear-gradient(180deg,#ffd95e,#f0b428);
+  border:3px solid #ffe9a0;
+  box-shadow:0 0 22px rgba(255,200,60,0.45);
+  color:#6e4a00;
+}
+.du-btn{
+  width:100%;padding:13px;border:none;border-radius:24px;
+  background:linear-gradient(180deg,#5ddc6a,#2fa742);
+  box-shadow:0 4px 0 #1f7d2c;
+  color:#fff;font-family:inherit;font-weight:900;font-size:21px;
+  display:flex;align-items:center;justify-content:center;gap:9px;
+  cursor:pointer;
+}
+.du-btn:active{transform:translateY(2px);box-shadow:0 2px 0 #1f7d2c;}
+.du-or{font-size:19px;font-weight:900;color:#cfd2ff;letter-spacing:1px;}
+.du-ad-ic{display:flex;align-items:center;}
+/* golden flash on the doubled tile */
+.tile.du-flash{ animation:duFlash .7s ease; }
+@keyframes duFlash{
+  0%  { box-shadow:0 0 0 0 rgba(255,200,40,0);   filter:brightness(1); }
+  30% { box-shadow:0 0 26px 10px rgba(255,200,40,0.9); filter:brightness(1.8); }
+  100%{ box-shadow:0 0 0 0 rgba(255,200,40,0);   filter:brightness(1); }
+}
+
 /* ── Simulated rewarded ad overlay ── */
 #adOverlay{
   position:fixed;inset:0;z-index:998;
@@ -2628,6 +2689,45 @@ body{
 
 
   <!-- ===================== SHOP MODAL ===================== -->
+  <!-- ── DOUBLE UP — mid-phase rescue offer: doubles the player's 2nd
+       biggest block (gems or rewarded ad) when the phase is stuck ── -->
+  <div id="duModal" class="hidden">
+    <div class="du-card">
+      <div class="du-header">
+        <span class="du-title">DOUBLE UP</span>
+        <div class="du-close" id="duClose">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </div>
+      </div>
+      <div class="du-body">
+        <div class="du-blocks">
+          <div class="du-blk" id="duFrom">32K</div>
+          <svg viewBox="0 0 60 24" width="54" height="24">
+            <rect x="0" y="9" width="5" height="6" fill="#fff" opacity="0.45"/>
+            <rect x="8" y="8" width="5" height="8" fill="#fff" opacity="0.65"/>
+            <rect x="16" y="7" width="5" height="10" fill="#fff" opacity="0.85"/>
+            <path d="M26 1 L52 12 L26 23 Z" fill="#fff"/>
+          </svg>
+          <div class="du-gold-wrap">
+            <svg class="du-crown" viewBox="0 0 36 26" width="36" height="26">
+              <path d="M5 22 L5 9 L12 14 L18 4 L24 14 L31 9 L31 22 Z" fill="#f5921e"/>
+              <circle cx="18" cy="4" r="2.8" fill="#8a2cc8"/>
+            </svg>
+            <div class="du-blk du-blk-gold" id="duTo">65K</div>
+          </div>
+        </div>
+        <button class="du-btn" id="duGems"><svg viewBox="0 0 40 44" width="22" height="22" style="filter:drop-shadow(0 1px 2px rgba(0,0,0,.5));"><path d="M9 9 H31 L38 17 L20 42 L2 17 Z" fill="#2a004a"/><polygon points="2,17 38,17 20,42" fill="#b32fe0"/><polygon points="2,17 20,17 20,42" fill="#d34bff"/><polygon points="38,17 20,17 20,42" fill="#8010b0"/><polygon points="9,9 2,17 13,17" fill="#9a20c0"/><polygon points="31,9 38,17 27,17" fill="#9a20c0"/><polygon points="9,9 31,9 27,17 13,17" fill="#f0aaff"/><polygon points="11,10.5 18,10.5 15.5,15 12.5,15" fill="#fff" opacity=".6"/><path d="M9 9 H31 L38 17 L20 42 L2 17 Z" fill="none" stroke="#1a0030" stroke-width="2" stroke-linejoin="round"/></svg> <b>75</b></button>
+        <div class="du-or">OR</div>
+        <button class="du-btn" id="duAd">
+          <span class="du-ad-ic">
+            <svg viewBox="0 0 34 24" width="30" height="22"><rect x="0" y="2" width="34" height="20" rx="4" fill="#1256a0"/><rect x="0" y="0" width="13" height="9" rx="3" fill="#37b94a"/><text x="6.5" y="7" text-anchor="middle" font-size="7" font-weight="900" fill="#fff" font-family="Arial">AD</text><circle cx="18" cy="13" r="6.5" fill="#1a80d0"/><polygon points="16,9.5 22.5,13 16,16.5" fill="#fff"/></svg>
+          </span>
+          <b>Free</b>
+        </button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── SIMULATED REWARDED AD — placeholder until the CiDi SDK lands.
        To integrate CiDi later, only the body of showRewardedAd() changes. ── -->
   <div id="adOverlay" class="hidden">
@@ -4270,7 +4370,13 @@ function rawPhaseProgress(){
   const sub = Math.min(1, ((Math.log2(Math.max(S, 2)) - 1) + subT * 0.999) / Math.max(1, Math.log2(B) - 1));
   return Math.min(0.995, (stepsDone + sub * 0.999) / stepsTotal);
 }
-function markPhaseStart(){ phaseBase = rawPhaseProgress(); }
+function markPhaseStart(){
+  phaseBase = rawPhaseProgress();
+  // Double Up trigger trackers reset every phase
+  duShownThisPhase = false;
+  phaseMoves = 0;
+  phaseStartMs = Date.now();
+}
 
 function updateProgress(){
   const goalVal  = goalForLevel(level);
@@ -4555,6 +4661,7 @@ function endDrag(){
 
 function resolveMerge(used, res){
   busy = true;
+  phaseMoves++;                       // Double Up trigger counter
   // Stronger vibration on merge — scales with chain length
   vibrate(Math.min(12 + used.length * 6, 60));
   mergeSound(used.length);
@@ -4585,6 +4692,7 @@ function resolveMerge(used, res){
     saveState();
     busy=false;
     if(res.result>=GOAL) win();
+    else maybeOfferDoubleUp();
   }, 150);
 }
 
@@ -4858,6 +4966,81 @@ function smashTap(obj){
     }, 170);
   }, 380);
 }
+// ── DOUBLE UP offer ─────────────────────────────────────────────
+// Fires mid-phase, at the frustration point: the player has the first
+// `mid` block but their 2nd biggest tile is lagging after many moves
+// (or a long time). Offers to DOUBLE the 2nd biggest block — putting
+// them one merge away from pairing — for gems OR a rewarded ad.
+// Shows at most once per phase; trackers reset in markPhaseStart().
+const DU_COST = 75, DU_MOVES = 25, DU_TIME_MS = 90000;
+let duShownThisPhase = false, phaseMoves = 0, phaseStartMs = Date.now();
+let duTarget = null;
+
+function maybeOfferDoubleUp(){
+  if(duShownThisPhase || busy || !playing || tut.active || swapMode || smashMode) return;
+  if(phaseMoves < DU_MOVES && (Date.now() - phaseStartMs) < DU_TIME_MS) return;
+  // find the two biggest tiles on the board
+  const tiles = [];
+  for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++){
+    if(board[r] && board[r][c]) tiles.push(board[r][c]);
+  }
+  if(tiles.length < 2) return;
+  tiles.sort((a, b) => b.value - a.value);
+  const B = tiles[0], S = tiles[1];
+  const midV = midForLevel(level);
+  // only offer when it actually rescues: 1st block reached mid,
+  // 2nd block still hasn't (doubling it closes the gap)
+  if(B.value < midV || S.value >= midV) return;
+  duTarget = S;
+  duShownThisPhase = true;
+  playing = false;
+  // style the "before" block like a real tile
+  const from = document.getElementById("duFrom");
+  const base = colorFor(S.value);
+  from.textContent = fmtGoal(S.value);
+  from.style.background = "linear-gradient(180deg," + lighten(base,22) + "," + base + ")";
+  from.style.color = isLightColor(base) ? "#33333f" : "#fff";
+  document.getElementById("duTo").textContent = fmtGoal(S.value * 2);
+  document.getElementById("duModal").classList.remove("hidden");
+  goalSound();
+}
+function duDismiss(){
+  document.getElementById("duModal").classList.add("hidden");
+  duTarget = null;
+  playing = true;
+}
+function duApply(){
+  const t = duTarget;
+  document.getElementById("duModal").classList.add("hidden");
+  duTarget = null;
+  playing = true;
+  // safety: the tile must still be on the board at the same spot
+  if(!t || !board[t.row] || board[t.row][t.col] !== t) return;
+  t.value *= 2;
+  styleTile(t);
+  t.el.classList.add("du-flash");
+  setTimeout(()=>{ t.el.classList.remove("du-flash"); }, 720);
+  mergeSound(5); gemSound(0.25);
+  vibrate(40);
+  refreshCrowns();
+  updateHUD(); updateProgress(); saveState();
+}
+document.getElementById("duClose").addEventListener("click", duDismiss);
+document.getElementById("duGems").addEventListener("click", ()=>{
+  if(gems < DU_COST){
+    const b = document.getElementById("duGems");
+    b.style.animation = "none"; void b.offsetWidth;
+    b.style.animation = "swapShake .35s ease";
+    unlinkSound(0);
+    return;
+  }
+  gems -= DU_COST; updateGems();
+  duApply();
+});
+document.getElementById("duAd").addEventListener("click", ()=>{
+  showRewardedAd(duApply);
+});
+
 const _hammerBtn = document.getElementById("hammerBtn");
 if(_hammerBtn) _hammerBtn.addEventListener("click", ()=>{
   if(smashMode){ exitSmashMode(); return; }
