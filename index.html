@@ -2453,7 +2453,7 @@ body{
           <path d="M24 14 L29.5 23 L24 32 L18.5 23 Z" fill="none" stroke="#4a0070" stroke-width="1.5" stroke-linejoin="round"/>
           <polygon points="22.5,16.5 24,15 25,17.5 23,18.5" fill="#fff" opacity="0.55"/>
         </svg>
-        <span>6,702</span>
+        <span id="hudRank">—</span>
       </div>
       <!-- Right: Rewards -->
       <div class="rewards-btn">
@@ -6389,7 +6389,7 @@ function lbSubmitScore(){
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id: playerId, nick: playerNick, score: score })
-    }).catch(()=>{});
+    }).then(()=>{ setTimeout(updateHomeRank, 1200); }).catch(()=>{});
   }catch(e){}
 }
 
@@ -6512,7 +6512,28 @@ function openLeaderboard(){
 function closeLeaderboard(){
   closeAllModals();
   setActiveNav('homeNavBtn', true);
+  updateHomeRank();        // refresh the home pill with the latest position
 }
+
+document.getElementById('lbBack').addEventListener('click', closeLeaderboard);
+document.getElementById('lbNavBtn').addEventListener('click', openLeaderboard);
+document.getElementById('hudCrownBtn').addEventListener('click', openLeaderboard);
+
+// ── Home crown pill = CURRENT GLOBAL RANK ───────────────────────
+// Fetches the player's global position (edge-cached 30s server-side)
+// and shows "#N" in the pill. Tapping it opens the leaderboard.
+async function updateHomeRank(){
+  const el = document.getElementById('hudRank');
+  if(!el) return;
+  if(!/^https?:$/.test(location.protocol)){ el.textContent = '—'; return; }
+  try{
+    const data = await lbFetch('global');
+    el.textContent = (data.me && data.me.rank)
+      ? '#' + Number(data.me.rank).toLocaleString('pt-BR')
+      : '—';
+  }catch(e){ el.textContent = '—'; }
+}
+updateHomeRank();                                       // boot
 
 // restore lightweight progress at startup so the home screen shows the right level/best
 try{
