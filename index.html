@@ -6488,6 +6488,29 @@ function editNickname(){
   setTimeout(renderLbBody, 600);
 }
 
+// Full game reset support: removes the player from the live rankings
+// (server-side ZREM) and mints a FRESH anonymous id, so the journey
+// truly restarts from zero — old entry gone, new one starts clean.
+function lbResetRanking(){
+  const oldId = playerId;
+  if(/^https?:$/.test(location.protocol)){
+    try{
+      fetch(LB_API + '/api/reset', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: oldId })
+      }).catch(()=>{});
+    }catch(e){}
+  }
+  playerId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
+  try{ localStorage.setItem('pid2248', playerId); }catch(e){}
+  lbLastSubmit = 0;
+  const el = document.getElementById('hudRank');
+  if(el) el.textContent = '—';
+}
+
 function switchLbTab(tab){
   lbCurrentTab = tab;
   document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
@@ -6795,7 +6818,14 @@ function executeFullReset(){
     localStorage.removeItem("gems2248");        // diamond balance
     localStorage.removeItem("shopAdProg2248");  // shop ad progress
     localStorage.removeItem("swapTut2248");     // swap one-time tutorial
+    localStorage.removeItem("smashTut2248");    // smash one-time tutorial
+    localStorage.removeItem("cidiTask2248");    // CiDi daily-task date guard
   }catch(e){}
+
+  // ── 4b. Remove the player from the LIVE RANKINGS ──────────────
+  // Server-side ZREM (global + country) and a brand-new anonymous
+  // id, so the leaderboard journey also restarts from zero.
+  lbResetRanking();
 
   // ── 5. Force a clean boot next time PLAY is pressed ──────────
   // Setting booted = false alone is not enough because the playBtn
