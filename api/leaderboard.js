@@ -36,6 +36,7 @@ export default async function handler(req, res){
       id: e.member,
       nick: p.n || 'Player',
       country: p.c || 'XX',
+      av: Number.isFinite(Number(p.a)) ? Number(p.a) : 0,
       score: e.score
     };
   });
