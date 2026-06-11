@@ -3566,7 +3566,7 @@ body{
         <div class="lb-tabs">
           <div class="lb-tab active" id="lbTabBR">
             <div class="lb-tab-inner">
-              🇧🇷 BR
+              📍 Meu País
             </div>
             <div class="lb-tab-bar"></div>
           </div>
@@ -4810,7 +4810,8 @@ function win(){
   bumpBest();                                  // phase completed → confirm highest block for home card
   cidiReportTask();                            // CiDi daily task: phase completed
   cidiReportScore();                           // CiDi tournament: stable score point
-  cidiMaybeClaimMedal();                       // CiDi medal: reach level 10
+  cidiMaybeClaimMedal();                       // CiDi medal: reach level 50
+  lbSubmitScore();                             // live leaderboard submit
   winSound();                                  // bright fanfare with the confetti
   confetti();                                  // burst inside the board first
   setTimeout(()=>showLevelUp(highest), 850);   // modal slides up afterwards
@@ -6320,36 +6321,52 @@ win = function(){
 
 
 // ══════════════════════════════════════════════════════════════
-//  LEADERBOARD
+//  LEADERBOARD — live rankings (Vercel serverless + Upstash Redis)
+//  Tabs: My Country (auto-detected server-side via the request IP)
+//  and Global (flag emoji in front of each nickname).
 // ══════════════════════════════════════════════════════════════
-let lbCurrentTab = 'br';
+let lbCurrentTab = 'country';
+const LB_API = '';   // same-origin: the game and /api/* deploy together on Vercel
 
-// Fake local stats — in a real game these come from localStorage / server
-const LB_LOCAL = [
-  { rank:1,  name:"Você",         flag:"🇧🇷", score: score, me: true  },
-  { rank:2,  name:"Higor M.",     flag:"🇧🇷", score: 12480 },
-  { rank:3,  name:"Ana P.",       flag:"🇧🇷", score: 9830  },
-  { rank:4,  name:"Carlos R.",    flag:"🇧🇷", score: 8760  },
-  { rank:5,  name:"Mariana L.",   flag:"🇧🇷", score: 7200  },
-  { rank:6,  name:"Lucas T.",     flag:"🇧🇷", score: 6540  },
-  { rank:7,  name:"Fernanda S.",  flag:"🇧🇷", score: 5980  },
-  { rank:8,  name:"Pedro A.",     flag:"🇧🇷", score: 5210  },
-  { rank:9,  name:"Juliana B.",   flag:"🇧🇷", score: 4880  },
-  { rank:10, name:"Rafael C.",    flag:"🇧🇷", score: 4450  },
-];
+// ── Anonymous identity + editable nickname (persisted) ─────────
+let playerId = '';
+try{ playerId = localStorage.getItem('pid2248') || ''; }catch(e){}
+if(!playerId){
+  playerId = (window.crypto && crypto.randomUUID)
+    ? crypto.randomUUID()
+    : 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2,10);
+  try{ localStorage.setItem('pid2248', playerId); }catch(e){}
+}
+let playerNick = '';
+try{ playerNick = localStorage.getItem('nick2248') || ''; }catch(e){}
+if(!playerNick){
+  playerNick = 'Player' + String(1000 + Math.floor(Math.random()*9000));
+  try{ localStorage.setItem('nick2248', playerNick); }catch(e){}
+}
+function sanitizeNick(n){
+  return String(n || '').replace(/[<>&"'`]/g, '').trim().slice(0, 14);
+}
+function escapeHTML(t){
+  return String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+// Country code → flag emoji (regional indicator symbols — no images)
+function flagEmoji(cc){
+  if(!cc || !/^[A-Z]{2}$/.test(cc)) return '🌐';
+  return String.fromCodePoint(0x1F1E6 + cc.charCodeAt(0) - 65,
+                              0x1F1E6 + cc.charCodeAt(1) - 65);
+}
 
 function formatScore(n){
   if(n >= 1000000) return (n/1000000).toFixed(3).replace('.',',') + 'M';
   if(n >= 1000)    return (n/1000).toFixed(1).replace('.',',') + 'K';
-  return n.toLocaleString('pt-BR');
+  return Number(n).toLocaleString('pt-BR');
 }
 
 function rankMedalHTML(rank){
   if(rank === 1) return `<div class="lb-rank-medal gold">1</div>`;
   if(rank === 2) return `<div class="lb-rank-medal silver">2</div>`;
   if(rank === 3) return `<div class="lb-rank-medal bronze">3</div>`;
-  const cls = rank<=3 ? ['','gold','silver','bronze'][rank] : '';
-  return `<div class="lb-rank ${cls}">${rank}</div>`;
+  return `<div class="lb-rank">${rank}</div>`;
 }
 
 function avatarHTML(){
@@ -6361,60 +6378,116 @@ function avatarHTML(){
   </div>`;
 }
 
-function renderLbLeague(){
-  // Sort by score desc, put "me" at real position
-  const sorted = [...LB_LOCAL].sort((a,b)=>b.score-a.score);
-  // Find my real rank
-  const myScore = score;
-  let myRank = sorted.findIndex(r=>r.me) + 1;
-  if(myRank === 0) myRank = sorted.length + 1;
+// ── Score submit (fire-and-forget; called at win) ───────────────
+let lbLastSubmit = 0;
+function lbSubmitScore(){
+  if(!/^https?:$/.test(location.protocol)) return;      // dev: file:// etc.
+  if(Date.now() - lbLastSubmit < 8000) return;          // client spam guard
+  lbLastSubmit = Date.now();
+  try{
+    fetch(LB_API + '/api/score', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id: playerId, nick: playerNick, score: score })
+    }).catch(()=>{});
+  }catch(e){}
+}
 
-  let rowsHTML = sorted.map((r,i)=>{
-    const pos = i + 1;
+async function lbFetch(scope){
+  const r = await fetch(LB_API + '/api/leaderboard?scope=' + scope +
+                        '&id=' + encodeURIComponent(playerId));
+  if(!r.ok) throw new Error('http ' + r.status);
+  return r.json();
+}
+
+function renderLbRows(data, scope){
+  const rows = data.rows || [];
+  if(!rows.length){
+    return `<div class="lb-coming-soon">
+      <div class="lb-cs-title">Ranking vazio</div>
+      <div class="lb-cs-sub">Complete uma fase para registrar<br>a primeira pontuação!</div>
+    </div>`;
+  }
+  const rowsHTML = rows.map(r => {
+    const isMe = r.id === playerId;
+    const flag = scope === 'global'
+      ? `<span class="lb-flag">${flagEmoji(r.country)}</span> `
+      : '';
     return `
-      <div class="lb-row ${r.me?'me':''}">
-        ${rankMedalHTML(pos)}
+      <div class="lb-row ${isMe ? 'me' : ''}">
+        ${rankMedalHTML(r.rank)}
         ${avatarHTML()}
         <div class="lb-info">
-          <div class="lb-name">${r.name} <span class="lb-flag">${r.flag}</span></div>
-          <div class="lb-sub">Fase ${Math.max(1,journeyCompleted)} • Bloco ${highest}</div>
+          <div class="lb-name">${flag}${escapeHTML(r.nick)}</div>
         </div>
         <div class="lb-score">${formatScore(r.score)}</div>
       </div>`;
   }).join('');
-
+  const meRank  = data.me ? data.me.rank  : null;
+  const meScore = data.me ? data.me.score : score;
   return `
     <div class="lb-list">${rowsHTML}</div>
     <div class="lb-footer">
       <div class="lb-footer-rank">
         <div class="lb-footer-rank-label">Rank:</div>
-        <div class="lb-footer-rank-num">${myRank}</div>
+        <div class="lb-footer-rank-num">${meRank ? meRank : '—'}</div>
       </div>
       <div class="lb-footer-row">
         ${avatarHTML()}
-        <div class="lb-footer-name">Você</div>
-        <div class="lb-footer-score">${formatScore(myScore)}</div>
+        <div class="lb-footer-name">${escapeHTML(playerNick)} ✎</div>
+        <div class="lb-footer-score">${formatScore(meScore)}</div>
       </div>
     </div>`;
 }
 
-function renderLbComingSoon(){
-  return `
-    <div class="lb-coming-soon">
-      <div class="lb-cs-icon">
-        <svg viewBox="0 0 48 48" width="54" height="54" fill="none">
-          <circle cx="24" cy="24" r="20" stroke="#3a4090" stroke-width="2"/>
-          <path d="M24 14 v12 l7 4" stroke="#ffd23d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-          <circle cx="24" cy="24" r="2" fill="#ffd23d"/>
-        </svg>
-      </div>
-      <div class="lb-cs-title">Coming Soon</div>
-      <div class="lb-cs-sub">Global rankings are on their way.<br>Keep playing to secure your spot!</div>
-      <div class="lb-cs-badge">🌐 STAY TUNED</div>
-    </div>`;
+function renderLbOffline(){
+  return `<div class="lb-coming-soon">
+    <div class="lb-cs-icon">
+      <svg viewBox="0 0 48 48" width="54" height="54" fill="none">
+        <circle cx="24" cy="24" r="20" stroke="#3a4090" stroke-width="2"/>
+        <path d="M24 14 v12 l7 4" stroke="#ffd23d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </div>
+    <div class="lb-cs-title">Sem conexão</div>
+    <div class="lb-cs-sub">Não foi possível carregar o ranking.<br>Tente novamente em instantes.</div>
+  </div>`;
 }
 
-const LB_TAB_IDS = { br:'lbTabBR', global:'lbTabGlobal' };
+const LB_TAB_IDS = { country:'lbTabBR', global:'lbTabGlobal' };
+async function renderLbBody(){
+  const body = document.getElementById('lbBody');
+  if(!body) return;
+  const tab = lbCurrentTab;
+  body.innerHTML = `<div class="lb-coming-soon"><div class="lb-cs-title">Carregando…</div></div>`;
+  try{
+    const data = await lbFetch(tab);
+    if(lbCurrentTab !== tab) return;            // user switched while loading
+    if(tab === 'country' && data.country){
+      // label the country tab with the player's real flag + code
+      const inner = document.querySelector('#lbTabBR .lb-tab-inner');
+      if(inner) inner.textContent = flagEmoji(data.country) + ' ' + data.country;
+    }
+    body.innerHTML = renderLbRows(data, tab);
+    const nickEl = body.querySelector('.lb-footer-name');
+    if(nickEl) nickEl.addEventListener('click', editNickname);
+  }catch(e){
+    if(lbCurrentTab !== tab) return;
+    body.innerHTML = renderLbOffline();
+  }
+}
+
+function editNickname(){
+  const n = prompt('Seu nickname (máx 14 caracteres):', playerNick);
+  if(n === null) return;
+  const clean = sanitizeNick(n);
+  if(!clean) return;
+  playerNick = clean;
+  try{ localStorage.setItem('nick2248', playerNick); }catch(e){}
+  lbLastSubmit = 0;       // allow immediate resubmit with the new nick
+  lbSubmitScore();
+  setTimeout(renderLbBody, 600);
+}
+
 function switchLbTab(tab){
   lbCurrentTab = tab;
   document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
@@ -6422,27 +6495,14 @@ function switchLbTab(tab){
   if(el) el.classList.add('active');
   renderLbBody();
 }
-// Tab clicks (were never wired — tabs were dead)
-document.getElementById('lbTabBR').addEventListener('click', () => switchLbTab('br'));
+document.getElementById('lbTabBR').addEventListener('click',     () => switchLbTab('country'));
 document.getElementById('lbTabGlobal').addEventListener('click', () => switchLbTab('global'));
 
-function renderLbBody(){
-  const body = document.getElementById('lbBody');
-  if(!body) return;
-  if(lbCurrentTab === 'br'){
-    const me = LB_LOCAL.find(r=>r.me);
-    if(me) me.score = score;
-    body.innerHTML = renderLbLeague();
-  } else {
-    body.innerHTML = renderLbComingSoon();
-  }
-}
-
 function openLeaderboard(){
-  lbCurrentTab = 'br';
+  lbCurrentTab = 'country';
   document.querySelectorAll('.lb-tab').forEach(t => t.classList.remove('active'));
-  const brTab = document.getElementById(LB_TAB_IDS['br']);
-  if(brTab) brTab.classList.add('active');
+  const cTab = document.getElementById(LB_TAB_IDS['country']);
+  if(cTab) cTab.classList.add('active');
   renderLbBody();
   closeAllModals();
   setActiveNav('lbNavBtn', true);
@@ -6453,12 +6513,6 @@ function closeLeaderboard(){
   closeAllModals();
   setActiveNav('homeNavBtn', true);
 }
-
-document.getElementById('lbBack').addEventListener('click', closeLeaderboard);
-document.getElementById('lbNavBtn').addEventListener('click', openLeaderboard);
-document.getElementById('hudCrownBtn').addEventListener('click', openLeaderboard);
-document.getElementById('lbTabBR').addEventListener('click',     () => switchLbTab('br'));
-document.getElementById('lbTabGlobal').addEventListener('click',  () => switchLbTab('global'));
 
 // restore lightweight progress at startup so the home screen shows the right level/best
 try{
