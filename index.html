@@ -752,6 +752,40 @@ body{
   #rotateOverlay{ display:flex; }
 }
 
+/* ── Ad loading indicator (tap → CiDi ad render gap) ── */
+#adLoading{
+  position:fixed;inset:0;z-index:990;
+  display:none;flex-direction:column;align-items:center;justify-content:center;gap:16px;
+  background:rgba(2,4,18,0.78);
+}
+#adLoading.show{display:flex;}
+.ad-spinner{
+  width:46px;height:46px;border-radius:50%;
+  border:4px solid rgba(255,255,255,0.15);
+  border-top-color:#ffd23d;
+  animation:adSpin .8s linear infinite;
+}
+@keyframes adSpin{to{transform:rotate(360deg);}}
+.ad-loading-txt{font-size:15px;font-weight:900;color:#fff;letter-spacing:2px;}
+
+/* ── Wallet chip + flying gems (level-up reward feedback) ── */
+#walletChip{
+  position:fixed;top:calc(14px + env(safe-area-inset-top));left:14px;z-index:1100;
+  display:flex;align-items:center;gap:6px;
+  background:linear-gradient(180deg,#2a3280,#1b2060);
+  border:1.5px solid #4a50a0;border-radius:20px;
+  padding:6px 14px 6px 10px;
+  font-weight:900;font-size:17px;color:#fff;
+  box-shadow:0 4px 14px rgba(0,0,0,0.5);
+  opacity:0;transform:translateY(-12px);
+  transition:opacity .25s, transform .25s;
+  pointer-events:none;
+}
+#walletChip.show{opacity:1;transform:translateY(0);}
+#walletChip.tick{animation:walletTick .18s ease;}
+@keyframes walletTick{50%{transform:scale(1.12);}}
+.fly-gem{position:fixed;z-index:1099;pointer-events:none;will-change:transform;}
+
 /* ── Gem reward splash (shown after the LAST ad of a shop pack) ── */
 #gemSplash{
   position:fixed;inset:0;z-index:1000;
@@ -2914,6 +2948,15 @@ body{
     <div>Gire o dispositivo<br><small>2248 Nexum foi feito para o modo retrato</small></div>
   </div>
 
+  <!-- Ad loading indicator -->
+  <div id="adLoading">
+    <div class="ad-spinner"></div>
+    <div class="ad-loading-txt">LOADING AD…</div>
+  </div>
+
+  <!-- Wallet chip (flying-gems target) -->
+  <div id="walletChip"><svg viewBox="0 0 40 44" width="20" height="22"><path d="M9 9 H31 L38 17 L20 42 L2 17 Z" fill="#2a004a"/><polygon points="2,17 38,17 20,42" fill="#b32fe0"/><polygon points="2,17 20,17 20,42" fill="#d34bff"/><polygon points="38,17 20,17 20,42" fill="#8010b0"/><polygon points="9,9 2,17 13,17" fill="#9a20c0"/><polygon points="31,9 38,17 27,17" fill="#9a20c0"/><polygon points="9,9 31,9 27,17 13,17" fill="#f0aaff"/><path d="M9 9 H31 L38 17 L20 42 L2 17 Z" fill="none" stroke="#1a0030" stroke-width="2" stroke-linejoin="round"/></svg><span id="walletChipNum">0</span></div>
+
   <!-- Gem reward splash (pack completed) -->
   <div id="gemSplash">
     <div class="gem-splash-card">
@@ -5040,6 +5083,59 @@ function advancePhase(){
   showStartOverlay();   // GOAL / Tap to Start before the next phase
   saveState();
 }
+// ── Flying-gems reward feedback ─────────────────────────────────
+// A wallet chip pops in at the top-left showing the OLD balance; small
+// faceted gems fly in a queue from the source button into it, and the
+// counter ticks up note by note until it lands on the new balance.
+function gemFlyReward(amount, fromEl){
+  const chip = document.getElementById("walletChip");
+  const num  = document.getElementById("walletChipNum");
+  if(!chip || !num){ gemBurst(Math.min(10, amount)); return; }
+  const newBal = gems;                       // gems already credited by caller
+  const oldBal = newBal - amount;
+  num.textContent = oldBal.toLocaleString("pt-BR");
+  chip.classList.add("show");
+
+  // source point (button centre) and target (chip centre)
+  let sx = window.innerWidth / 2, sy = window.innerHeight * 0.62;
+  if(fromEl && fromEl.getBoundingClientRect){
+    const r = fromEl.getBoundingClientRect();
+    sx = r.left + r.width / 2; sy = r.top + r.height / 2;
+  }
+  const cr = chip.getBoundingClientRect();
+  const tx = cr.left + cr.width / 2, ty = cr.top + cr.height / 2;
+
+  const N = Math.max(3, Math.min(8, Math.ceil(amount / 4)));
+  let arrived = 0, shown = oldBal;
+  for(let i = 0; i < N; i++){
+    setTimeout(()=>{
+      const g = document.createElement("div");
+      g.className = "fly-gem";
+      g.innerHTML = '<svg viewBox="0 0 40 44" width="26" height="28"><path d="M9 9 H31 L38 17 L20 42 L2 17 Z" fill="#2a004a"/><polygon points="2,17 38,17 20,42" fill="#b32fe0"/><polygon points="2,17 20,17 20,42" fill="#d34bff"/><polygon points="38,17 20,17 20,42" fill="#8010b0"/><polygon points="9,9 2,17 13,17" fill="#9a20c0"/><polygon points="31,9 38,17 27,17" fill="#9a20c0"/><polygon points="9,9 31,9 27,17 13,17" fill="#f0aaff"/><path d="M9 9 H31 L38 17 L20 42 L2 17 Z" fill="none" stroke="#1a0030" stroke-width="2" stroke-linejoin="round"/></svg>';
+      const jx = (Math.random() - 0.5) * 36, jy = (Math.random() - 0.5) * 24;
+      g.style.left = (sx - 13 + jx) + "px";
+      g.style.top  = (sy - 14 + jy) + "px";
+      document.body.appendChild(g);
+      const anim = g.animate([
+        { transform: "translate(0,0) scale(1)",   opacity: 1 },
+        { transform: "translate(" + ((tx - sx - jx) * 0.5) + "px," + ((ty - sy - jy) * 0.5 - 60) + "px) scale(0.9)", opacity: 1, offset: 0.55 },
+        { transform: "translate(" + (tx - sx - jx) + "px," + (ty - sy - jy) + "px) scale(0.35)", opacity: 0.9 }
+      ], { duration: 620, easing: "cubic-bezier(.3,.1,.5,1)", fill: "forwards" });
+      anim.onfinish = ()=>{
+        g.remove();
+        arrived++;
+        shown = (arrived === N) ? newBal : Math.round(oldBal + (amount * arrived) / N);
+        num.textContent = shown.toLocaleString("pt-BR");
+        chip.classList.remove("tick"); void chip.offsetWidth; chip.classList.add("tick");
+        pluck(523 * Math.pow(2, arrived / 12), 0.07, 0.05, "triangle", 0.22);  // rising notes
+        if(arrived === N){
+          setTimeout(()=>{ chip.classList.remove("show"); }, 900);
+        }
+      };
+    }, i * 95);                                // queue: one gem every 95ms
+  }
+}
+
 $("#luClaim").addEventListener("click",()=>{
   // The multiplied reward is EARNED BY WATCHING AN AD (original's rule):
   // lock the multiplier at click time (the arrow keeps sweeping), play
@@ -5049,11 +5145,16 @@ $("#luClaim").addEventListener("click",()=>{
   const mult = luMult;
   showRewardedAd(()=>{
     const amt = LU_BASE_REWARD * mult;
-    gems += amt; gemBurst(amt); updateHUD();
+    gems += amt; updateHUD();
+    gemFlyReward(amt, document.getElementById("luClaim"));
     advancePhase();
   });
 });
-$("#luNo").addEventListener("click",()=>{ gems += LU_BASE_REWARD; gemBurst(LU_BASE_REWARD); updateHUD(); advancePhase(); });
+$("#luNo").addEventListener("click",()=>{
+  gems += LU_BASE_REWARD; updateHUD();
+  gemFlyReward(LU_BASE_REWARD, document.getElementById("luNo"));
+  advancePhase();
+});
 $("#luClose").addEventListener("click",()=>{ advancePhase(); });
 
 // ── SWAP booster ────────────────────────────────────────────────
@@ -5522,7 +5623,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.3";
+const BUILD = "2026-06-11.4";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -5655,7 +5756,15 @@ function showRewardedAd(onReward){
     if(adShowing) return;
     adShowing = true;
     const wasPlaying = playing; playing = false;     // freeze input behind the ad
+    // Instant feedback: the gap between the tap and the CiDi ad taking
+    // over can be a few seconds — show a spinner so the player never
+    // thinks the button is broken (and never double-taps).
+    const loader = document.getElementById("adLoading");
+    loader.classList.add("show");
+    const hideLoader = () => loader.classList.remove("show");
+    const loaderSafety = setTimeout(hideLoader, 10000);  // ad is on top by then
     CiDiSDK.showRewardedAd().then(result => {
+      clearTimeout(loaderSafety); hideLoader();
       adShowing = false; playing = wasPlaying;
       if(result && result.success === true){
         if(typeof onReward === "function") onReward();
@@ -5663,6 +5772,7 @@ function showRewardedAd(onReward){
         adFailToast();
       }
     }).catch(err => {
+      clearTimeout(loaderSafety); hideLoader();
       adShowing = false; playing = wasPlaying;
       console.warn("[CiDi] ad:", err && err.error, err && err.message);
       adFailToast();
