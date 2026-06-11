@@ -106,38 +106,44 @@ body{
   display:flex;align-items:center;gap:6px;
   background:linear-gradient(180deg,#2a3280,#1b2060);
   border:1.5px solid #3a4090;
-  border-radius:22px;padding:6px 10px 6px 40px;
+  border-radius:22px;padding:7px 9px 7px 38px;
   box-shadow:0 2px 0 #080c28, 0 0 0 0.5px #4a50a0;
   position:relative;   /* anchor for the oversized gem */
 }
 /* reference formatting: the gem is BIGGER than the pill and overflows
    its left edge — juicy hero icon, pill just carries the count */
 .gem-svg{
-  width:48px;height:48px;flex:none;
-  position:absolute;left:-15px;top:50%;
-  transform:translateY(-50%);
+  width:46px;height:46px;flex:none;
+  position:absolute;left:-14px;top:50%;
+  /* the gem artwork sits low inside its viewBox (content centre ≈58%),
+     so -58% puts the VISUAL centre on the pill's centre line */
+  transform:translateY(-58%);
+  filter:drop-shadow(0 3px 4px rgba(0,0,0,.45));
 }
-.hud-gems b{font-size:18px;font-weight:800;}
+.hud-gems b{font-size:18px;font-weight:800;line-height:1;}
 .plus-btn{
-  width:22px;height:22px;border-radius:7px;flex:none;
-  background:linear-gradient(180deg,#5ddc6a,#37b94a);
-  border:none;color:#fff;font-size:16px;font-weight:800;line-height:20px;
-  box-shadow:0 2px 0 #1f7d2c;cursor:pointer;text-align:center;
+  width:24px;height:24px;border-radius:8px;flex:none;
+  background:linear-gradient(180deg,#6ce87a 0%,#43c455 55%,#2fa742 100%);
+  border:none;color:#fff;font-size:17px;font-weight:900;line-height:1;
+  box-shadow:0 2px 0 #1f7d2c, inset 0 1.5px 0 rgba(255,255,255,0.4);
+  cursor:pointer;text-align:center;
   display:flex;align-items:center;justify-content:center;
+  padding-bottom:1px;   /* optical centre of the "+" glyph */
 }
 .hud-crown{
   display:flex;align-items:center;gap:7px;
   background:linear-gradient(180deg,#2a3280,#1b2060);
   border:1.5px solid #3a4090;
-  border-radius:22px;padding:6px 14px 6px 46px;
-  font-weight:800;font-size:18px;
+  border-radius:22px;padding:7px 16px 7px 50px;
+  font-weight:800;font-size:18px;line-height:1;
   box-shadow:0 2px 0 #080c28, 0 0 0 0.5px #4a50a0;
   position:relative;
 }
 .crown-ico{
-  width:42px;height:36px;flex:none;
-  position:absolute;left:0px;top:50%;
-  transform:translateY(-50%);
+  width:40px;height:34px;flex:none;
+  position:absolute;left:5px;top:50%;
+  /* crown artwork centre ≈47.5% of its viewBox — nudge to optical centre */
+  transform:translateY(-49%);
   filter:drop-shadow(0 2px 3px rgba(0,0,0,.45));
 }
 
@@ -752,6 +758,28 @@ body{
   #rotateOverlay{ display:flex; }
 }
 
+/* ── Combo praise (NICE → GREAT! → AMAZING! → INCREDIBLE!) ── */
+.combo-praise{
+  position:absolute;left:50%;top:30%;
+  transform:translate(-50%,-50%);
+  z-index:60;pointer-events:none;
+  font-family:'Baloo 2',sans-serif;font-weight:900;
+  letter-spacing:2px;white-space:nowrap;
+  -webkit-text-stroke:1.5px rgba(20,8,40,0.55);
+  animation:praisePop 1.05s cubic-bezier(.2,1.4,.4,1) forwards;
+}
+.combo-praise.t1{font-size:34px;color:#5ddc6a;text-shadow:0 3px 0 #1f7d2c, 0 6px 18px rgba(70,220,110,.45);}
+.combo-praise.t2{font-size:38px;color:#ffd23d;text-shadow:0 3px 0 #a86a00, 0 6px 20px rgba(255,200,40,.5);}
+.combo-praise.t3{font-size:42px;color:#ff8a3d;text-shadow:0 3px 0 #b04010, 0 7px 22px rgba(255,120,40,.55);}
+.combo-praise.t4{font-size:46px;color:#d34bff;text-shadow:0 3px 0 #6a10a0, 0 8px 26px rgba(200,70,255,.65);}
+@keyframes praisePop{
+  0%  { transform:translate(-50%,-50%) scale(.25) rotate(-7deg); opacity:0; }
+  18% { transform:translate(-50%,-50%) scale(1.18) rotate(2deg); opacity:1; }
+  30% { transform:translate(-50%,-50%) scale(1) rotate(0deg); }
+  72% { transform:translate(-50%,-50%) scale(1); opacity:1; }
+  100%{ transform:translate(-50%,-86%) scale(.92); opacity:0; }
+}
+
 /* ── Ad loading indicator (tap → CiDi ad render gap) ── */
 #adLoading{
   position:fixed;inset:0;z-index:990;
@@ -1270,6 +1298,12 @@ body{
   display:flex;align-items:center;gap:0;
   cursor:pointer;position:relative;overflow:hidden;
 }
+.rw-day7.today{
+  border-color:#ffd23d;
+  box-shadow:0 0 18px rgba(255,210,60,0.35), inset 0 0 0 1px rgba(255,210,60,0.4);
+}
+.rw-day7.rw-collected{opacity:.55;}
+.rw-day7.rw-locked{opacity:.45;filter:grayscale(.3);}
 .rw-day7::before{
   content:'';position:absolute;top:0;left:0;right:0;height:1px;
   background:linear-gradient(90deg,transparent,rgba(255,255,255,0.12),transparent);
@@ -2931,8 +2965,16 @@ body{
         <!-- Settings -->
         <div class="nav-icon">
           <svg viewBox="0 0 32 32" fill="#7888bb">
-            <path d="M16 10.5a5.5 5.5 0 1 0 0 11 5.5 5.5 0 0 0 0-11zm0 8.5a3 3 0 1 1 0-6 3 3 0 0 1 0 6z"/>
-            <path d="M27.6 17.9l-1.8-.4a9.8 9.8 0 0 0-.7-1.7l1-1.5a1 1 0 0 0-.1-1.3l-1.9-1.9a1 1 0 0 0-1.3-.1l-1.5 1a9.8 9.8 0 0 0-1.7-.7l-.4-1.8A1 1 0 0 0 18.2 8h-2.7a1 1 0 0 0-1 .8l-.4 1.8a9.8 9.8 0 0 0-1.7.7l-1.5-1a1 1 0 0 0-1.3.1L7.7 12.3a1 1 0 0 0-.1 1.3l1 1.5a9.8 9.8 0 0 0-.7 1.7l-1.8.4A1 1 0 0 0 5.3 18.2v2.7a1 1 0 0 0 .8 1l1.8.4c.2.6.4 1.2.7 1.7l-1 1.5a1 1 0 0 0 .1 1.3l1.9 1.9a1 1 0 0 0 1.3.1l1.5-1c.5.3 1.1.5 1.7.7l.4 1.8a1 1 0 0 0 1 .8h2.7a1 1 0 0 0 1-.8l.4-1.8c.6-.2 1.2-.4 1.7-.7l1.5 1a1 1 0 0 0 1.3-.1l1.9-1.9a1 1 0 0 0 .1-1.3l-1-1.5c.3-.5.5-1.1.7-1.7l1.8-.4a1 1 0 0 0 .8-1v-2.7a1 1 0 0 0-.8-1z" opacity="0.85"/>
+            <!-- 8 teeth + donut ring, every shape centred on (16,16) -->
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(0 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(45 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(90 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(135 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(180 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(225 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(270 16 16)"/>
+            <rect x="14.2" y="3.2" width="3.6" height="6.2" rx="1.5" transform="rotate(315 16 16)"/>
+            <path d="M16 7.2 a8.8 8.8 0 1 0 0.001 0 Z M16 11.8 a4.2 4.2 0 1 1 -0.001 0 Z" fill-rule="evenodd"/>
           </svg>
         </div>
       </div>
@@ -3721,7 +3763,7 @@ body{
         <div class="lb-tabs">
           <div class="lb-tab active" id="lbTabBR">
             <div class="lb-tab-inner">
-              📍 Meu País
+              📍 My Country
             </div>
             <div class="lb-tab-bar"></div>
           </div>
@@ -3859,22 +3901,6 @@ body{
         </div>
 
         <!-- ── Section 3: About ── -->
-        <div class="settings-card">
-
-          <!-- Contact Us -->
-          <div class="settings-row" id="stContactBtn">
-            <div class="settings-icon">
-              <svg viewBox="0 0 24 24" width="26" height="26" fill="none" stroke="#fff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-                <polyline points="22,6 12,13 2,6"/>
-              </svg>
-            </div>
-            <div class="settings-label">Contact Us</div>
-            <div class="settings-arrow">›</div>
-          </div>
-
-        </div>
-
       </div><!-- end scroll -->
     </div>
   </div><!-- end settingsModal -->
@@ -4049,10 +4075,46 @@ let uid = 1;
 let cell = 60;
 let score = 0;
 let gems = 94;
+// Light tamper guard: the balance is stored as "value|checksum". A hand
+// edited value fails the check and the balance falls back to the start
+// amount. Legacy plain-number saves are migrated on first load.
+function gemHash(n){
+  let h = 0x9e37 ^ 2248;
+  const str = "nx" + n + "um";
+  for(let i = 0; i < str.length; i++){
+    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+  }
+  return Math.abs(h).toString(36);
+}
+function persistGems(){
+  try{
+    localStorage.setItem("gems2248", gems + "|" + gemHash(gems));
+    localStorage.setItem("gemsig2248", "1");      // migration complete
+  }catch(e){}
+}
+function parseGems(raw){
+  if(raw === null || raw === undefined) return null;
+  const s = String(raw);
+  if(s.indexOf("|") >= 0){
+    const [v, h] = s.split("|");
+    const n = parseInt(v, 10);
+    if(!isNaN(n) && n >= 0 && gemHash(n) === h) return n;
+    return 0;                       // tampered → balance resets
+  }
+  // Legacy plain format: accepted ONLY during the one-time migration
+  // window (before the "gemsig2248" flag exists). After migration any
+  // plain value is a hand edit → balance resets.
+  let migrated = false;
+  try{ migrated = localStorage.getItem("gemsig2248") === "1"; }catch(e){}
+  if(migrated) return 0;
+  const n = parseInt(s, 10);
+  return (!isNaN(n) && n >= 0) ? n : null;
+}
 // Persisted diamond balance — single source of truth synced everywhere
-try{ const g = localStorage.getItem("gems2248"); if(g !== null){ const n = parseInt(g,10); if(!isNaN(n) && n >= 0) gems = n; } }catch(e){}
+try{ const g = parseGems(localStorage.getItem("gems2248")); if(g !== null) gems = g; }catch(e){}
+persistGems();   // migrate legacy saves to the signed format immediately
 function updateGems(){
-  try{ localStorage.setItem("gems2248", String(gems)); }catch(e){}
+  persistGems();
   document.querySelectorAll(".hud-gems b").forEach(el => el.textContent = gems);
   const sg = document.getElementById("shopGemCount"); if(sg) sg.textContent = gems;
 }
@@ -4810,8 +4872,31 @@ function endDrag(){
   if(res.valid && used.length>=2){ resolveMerge(used,res); }
 }
 
+// ── Combo praise: escalating shout-outs for long chains ─────────
+const PRAISE_TIERS = [
+  { min: 12, cls: "t4", text: "INCREDIBLE!", notes: 5 },
+  { min:  9, cls: "t3", text: "AMAZING!",    notes: 4 },
+  { min:  7, cls: "t2", text: "GREAT!",      notes: 3 },
+  { min:  5, cls: "t1", text: "NICE",        notes: 2 },
+];
+function showComboPraise(chainLen){
+  const tier = PRAISE_TIERS.find(t => chainLen >= t.min);
+  if(!tier) return;
+  boardWrap.querySelector(".combo-praise")?.remove();   // one at a time
+  const el = document.createElement("div");
+  el.className = "combo-praise " + tier.cls;
+  el.textContent = tier.text;
+  boardWrap.appendChild(el);
+  setTimeout(()=> el.remove(), 1100);
+  // rising arpeggio — one extra note per tier
+  for(let i = 0; i < tier.notes; i++){
+    pluck(659 * Math.pow(2, i / 6), 0.09, 0.06, "triangle", 0.18 + i * 0.07);
+  }
+}
+
 function resolveMerge(used, res){
   busy = true;
+  showComboPraise(used.length);
   // Double Up trigger trackers: the phase clock starts on the FIRST
   // move (idling on home/journey/shop must not count toward the 90s)
   if(phaseMoves === 0) phaseStartMs = Date.now();
@@ -5055,6 +5140,7 @@ function showLevelUp(value){
   bl.style.background="linear-gradient(180deg,"+lighten(col,18)+","+col+")";
   $("#luBlockVal").style.color=isLightColor(col)?"#33333f":"#fff";
   $("#luReward").textContent=LU_BASE_REWARD;
+  luResolved = false;            // re-arm the level-up buttons
   $("#levelUpModal").classList.add("show");
   // animate the pointer bouncing across the bar
   const start=performance.now(), period=1700;
@@ -5136,7 +5222,11 @@ function gemFlyReward(amount, fromEl){
   }
 }
 
+// Re-entry guard: a fast double-tap on any level-up button must not
+// double-credit gems or call advancePhase twice (level skip).
+let luResolved = false;
 $("#luClaim").addEventListener("click",()=>{
+  if(luResolved) return;
   // The multiplied reward is EARNED BY WATCHING AN AD (original's rule):
   // lock the multiplier at click time (the arrow keeps sweeping), play
   // the rewarded ad (real CiDi in-platform / simulated in dev), and only
@@ -5144,6 +5234,8 @@ $("#luClaim").addEventListener("click",()=>{
   // stays on the modal — can retry or take "No Thanks".
   const mult = luMult;
   showRewardedAd(()=>{
+    if(luResolved) return;
+    luResolved = true;
     const amt = LU_BASE_REWARD * mult;
     gems += amt; updateHUD();
     gemFlyReward(amt, document.getElementById("luClaim"));
@@ -5151,11 +5243,17 @@ $("#luClaim").addEventListener("click",()=>{
   });
 });
 $("#luNo").addEventListener("click",()=>{
+  if(luResolved) return;
+  luResolved = true;
   gems += LU_BASE_REWARD; updateHUD();
   gemFlyReward(LU_BASE_REWARD, document.getElementById("luNo"));
   advancePhase();
 });
-$("#luClose").addEventListener("click",()=>{ advancePhase(); });
+$("#luClose").addEventListener("click",()=>{
+  if(luResolved) return;
+  luResolved = true;
+  advancePhase();
+});
 
 // ── SWAP booster ────────────────────────────────────────────────
 // Tap the toolbar swap button → board is highlighted over a dim layer,
@@ -5623,7 +5721,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.4";
+const BUILD = "2026-06-11.10";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -5665,7 +5763,7 @@ async function cidiInit(){
 // Re-read persisted state after storage becomes available (Pi iOS).
 // Only cheap globals + UI refresh; the board save is read on Play.
 function reloadPersistedState(){
-  try{ const v = localStorage.getItem("gems2248");  if(v !== null) gems = parseInt(v,10) || 0; }catch(e){}
+  try{ const v = parseGems(localStorage.getItem("gems2248")); if(v !== null) gems = v; persistGems(); }catch(e){}
   try{ const v = localStorage.getItem("best2248");  if(v !== null) bestBlock = parseInt(v,10) || 2; }catch(e){}
   try{ sfxOn   = localStorage.getItem("sfx2248")   !== "0"; }catch(e){}
   try{ musicOn = localStorage.getItem("music2248") !== "0"; }catch(e){}
@@ -5779,7 +5877,14 @@ function showRewardedAd(onReward){
     });
     return;
   }
-  showSimulatedAd(onReward);   // dev fallback outside the platform
+  // SECURITY: the simulated ad is a DEV-ONLY tool. In production the
+  // game is distributed exclusively through the CiDi launch link (which
+  // always carries tempToken → real ads). Anyone hitting the raw URL
+  // must NOT get free rewards from a fake 5s ad.
+  const isDev = /^(localhost|127\.|192\.168\.)/.test(location.hostname) ||
+                new URLSearchParams(location.search).has("dev");
+  if(isDev){ showSimulatedAd(onReward); return; }
+  adFailToast("ADS AVAILABLE IN THE CIDI APP ONLY");
 }
 
 function showSimulatedAd(onReward){
@@ -5972,9 +6077,8 @@ function drCollect() {
 
   drSaveState({ streak: newStreak, lastDate: drToday(), collected });
 
-  // Award gems & refresh HUD
+  // Award gems & refresh HUD (the caller plays the flying-gems anim)
   gems += totalGems;
-  gemBurst(Math.min(totalGems, 8));
   updateGems();
 
   return { dayGems, bonusGems, totalGems, newStreak, milestone };
@@ -6010,14 +6114,21 @@ function drRenderUI() {
   const cyclePos    = streak % 7; // 0 = just completed cycle, 7th day lands here
   const todayIndex  = canCollect ? (streak % 7) : ((streak - 1) % 7);
 
-  document.querySelectorAll('.rw-day-card').forEach((card, i) => {
+  // Days 1-6 are .rw-day-card; DAY 7 is the wide .rw-day7 row — it
+  // joins the same state pass as index 6 (it was previously skipped,
+  // so the 7th day never highlighted or checked).
+  const dayEls = [...document.querySelectorAll('.rw-day-card')];
+  const day7 = document.querySelector('.rw-day7');
+  if (day7) dayEls.push(day7);
+
+  dayEls.forEach((card, i) => {
     card.classList.remove('today', 'rw-collected', 'rw-locked');
     card.querySelector('.rw-check')?.remove();
 
     if (canCollect && i === todayIndex) {
       // Claimable right now
       card.classList.add('today');
-    } else if ((!canCollect && i < todayIndex) || (!canCollect && i === todayIndex)) {
+    } else if (!canCollect && i <= todayIndex) {
       // Already claimed this cycle
       card.classList.add('rw-collected');
       const check = document.createElement('div');
@@ -6098,14 +6209,20 @@ function drShowToast(result) {
 
 // ── Open / Close ──────────────────────────────────────────────
 
+let drTick = null;
 function openRewards() {
   drRenderUI();
+  drRefreshDot();
   closeAllModals();
   setActiveNav(null, true);
   document.getElementById("rewardsModal").classList.add("open");
+  // live countdown: re-render every 30s while the modal is open
+  if (drTick) clearInterval(drTick);
+  drTick = setInterval(drRenderUI, 30000);
 }
 
 function closeRewards() {
+  if (drTick){ clearInterval(drTick); drTick = null; }
   closeAllModals();
   setActiveNav("homeNavBtn", true);
 }
@@ -6123,15 +6240,21 @@ document.getElementById("rwCollect").addEventListener("click", function() {
   const result = drCollect();
   if (!result) return; // already collected (button was disabled)
   drRenderUI();
+  drRefreshDot();                                  // dot off right away
+  gemFlyReward(result.totalGems, this);            // gems fly to the wallet chip
   drShowToast(result);
 });
 
-// ── On load: update rewards dot if claimable today ────────────
-(function() {
-  const state = drLoadState();
-  const dot   = document.querySelector('.rewards-dot');
-  if (dot) dot.style.display = drCanCollect(state) ? 'block' : 'none';
-})();
+// ── Rewards red dot: single source of truth ───────────────────
+// Refreshed on load, after every collect, when the modal opens, and
+// once a minute — so it turns OFF right after collecting and back ON
+// at midnight even if the app stays open.
+function drRefreshDot(){
+  const dot = document.querySelector('.rewards-dot');
+  if(dot) dot.style.display = drCanCollect(drLoadState()) ? 'block' : 'none';
+}
+drRefreshDot();
+setInterval(drRefreshDot, 60000);
 
 // ── Profile ───────────────────────────────────────────────────
 function updateProfile(){
@@ -6752,8 +6875,8 @@ function renderLbRows(data, scope){
   const rows = data.rows || [];
   if(!rows.length){
     return `<div class="lb-coming-soon">
-      <div class="lb-cs-title">Ranking vazio</div>
-      <div class="lb-cs-sub">Complete uma fase para registrar<br>a primeira pontuação!</div>
+      <div class="lb-cs-title">Empty ranking</div>
+      <div class="lb-cs-sub">Complete a phase to register<br>the first score!</div>
     </div>`;
   }
   const rowsHTML = rows.map(r => {
@@ -6796,8 +6919,8 @@ function renderLbOffline(){
         <path d="M24 14 v12 l7 4" stroke="#ffd23d" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
     </div>
-    <div class="lb-cs-title">Sem conexão</div>
-    <div class="lb-cs-sub">Não foi possível carregar o ranking.<br>Tente novamente em instantes.</div>
+    <div class="lb-cs-title">No connection</div>
+    <div class="lb-cs-sub">Could not load the ranking.<br>Please try again in a moment.</div>
   </div>`;
 }
 
@@ -6806,7 +6929,7 @@ async function renderLbBody(){
   const body = document.getElementById('lbBody');
   if(!body) return;
   const tab = lbCurrentTab;
-  body.innerHTML = `<div class="lb-coming-soon"><div class="lb-cs-title">Carregando…</div></div>`;
+  body.innerHTML = `<div class="lb-coming-soon"><div class="lb-cs-title">Loading…</div></div>`;
   try{
     const data = await lbFetch(tab);
     if(lbCurrentTab !== tab) return;            // user switched while loading
@@ -7207,15 +7330,6 @@ function wireAccordion(btnId, contentId, arrowId){
 wireAccordion("stHelpBtn", "stHelpContent", "stHelpArrow");
 wireAccordion("stPowBtn",  "stPowContent",  "stPowArrow");
 
-// Contact Us → opens the mail app.
-// ⚠ REPLACE with your real support address before publishing:
-const CONTACT_EMAIL = "contato@example.com";
-const _contactBtn = document.getElementById("stContactBtn");
-if(_contactBtn) _contactBtn.addEventListener("click", () => {
-  location.href = "mailto:" + CONTACT_EMAIL +
-    "?subject=" + encodeURIComponent("2248 Nexum — Contact");
-});
-
 // ── How to Play expand ─────────────────────────────────────────
 const htpBtn  = document.getElementById("stHtpBtn");
 const htpContent = document.getElementById("stHtpContent");
@@ -7264,13 +7378,14 @@ function closeResetConfirm(){
 }
 
 function executeFullReset(){
-  // ── 1. Wipe all game-state variables ─────────────────────────
+  // ── PROGRESS-ONLY RESET ───────────────────────────────────────
+  // Restarts the JOURNEY (level, score, board, snapshots, map) and the
+  // ranking identity. Everything the player ACQUIRED is kept: diamond
+  // balance, shop ad progress, highest-block record + collection,
+  // daily-reward streak, tutorials seen, settings and nickname/avatar.
   level            = 1;          // back to the very first phase
   score            = 0;          // no score
   highest          = 2;          // progress bar: no player merges yet
-  bestBlock        = 2;          // home screen card: resets to "2"
-  gems             = 94;         // restore starter gem count
-  shopAdProg       = {};         // shop ad-pack progress
   journeyCompleted = 0;          // lock all levels except phase 1
   booted           = false;      // force a clean boot on next PLAY
   playing          = false;
@@ -7290,12 +7405,9 @@ function executeFullReset(){
   // even though all in-memory variables were reset above.
   try{
     localStorage.removeItem("save2248");  // wipes level, board, score
-    localStorage.removeItem("best2248"); // wipes home "highest block"
-    localStorage.removeItem("gems2248");        // diamond balance
-    localStorage.removeItem("shopAdProg2248");  // shop ad progress
-    localStorage.removeItem("swapTut2248");     // swap one-time tutorial
-    localStorage.removeItem("smashTut2248");    // smash one-time tutorial
-    localStorage.removeItem("cidiTask2248");    // CiDi daily-task date guard
+    // KEPT on purpose (progress-only reset): best2248, gems2248,
+    // shopAdProg2248, swapTut2248, smashTut2248, cidiTask2248,
+    // daily-reward keys, settings, nick/avatar.
   }catch(e){}
 
   // ── 4b. Remove the player from the LIVE RANKINGS ──────────────
@@ -7310,11 +7422,9 @@ function executeFullReset(){
   // falls through to bootGame() → fillBoardInitial() → level 1.
   booted = false;
 
-  // ── 5b. Reset tutorial flag ───────────────────────────────────
-  // tutSeen is an in-memory flag that becomes true once the player
-  // finishes (or skips) the tutorial.  After a full game reset the
-  // player should see it again, exactly like a first-time install.
-  tutSeen = false;
+  // ── 5b. Tutorials stay completed ──────────────────────────────
+  // Progress-only reset: the player already knows how to play, so the
+  // intro tutorial and the booster banners are NOT shown again.
   tut.active = false;
   tut.step   = 0;
 
