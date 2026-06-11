@@ -752,6 +752,53 @@ body{
   #rotateOverlay{ display:flex; }
 }
 
+/* ── Select Avatar modal ── */
+#avModal{
+  position:fixed;inset:0;z-index:120;
+  background:rgba(2,4,18,0.82);
+  display:none;align-items:center;justify-content:center;
+}
+#avModal.open{display:flex;}
+.av-card{
+  width:min(90vw,360px);max-height:86dvh;overflow-y:auto;
+  background:#13235e;border-radius:20px;
+  box-shadow:0 16px 50px rgba(0,0,0,0.6);
+  animation:duIn .3s cubic-bezier(.2,1.4,.4,1);
+}
+.av-grid{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:10px;
+  padding:18px 18px 6px;
+}
+.av-cell{
+  border-radius:12px;overflow:hidden;cursor:pointer;
+  outline:3px solid transparent;outline-offset:2px;
+  transition:outline-color .12s, transform .12s;
+  aspect-ratio:1;
+}
+.av-cell.sel{outline-color:#fff;transform:scale(1.04);}
+.av-cell svg{display:block;width:100%;height:100%;}
+.av-nick-label{
+  text-align:center;font-size:22px;font-weight:900;color:#fff;
+  margin:14px 0 10px;
+}
+.av-input{
+  display:block;width:calc(100% - 48px);margin:0 auto;
+  background:#3a3f55;border:none;border-radius:12px;
+  padding:13px 16px;text-align:center;
+  font-family:inherit;font-size:20px;font-weight:800;color:#fff;
+  outline:none;
+}
+.av-input:focus{box-shadow:0 0 0 2px rgba(120,160,255,0.5);}
+.av-done{
+  display:block;width:min(200px,60%);margin:18px auto 20px;
+  padding:13px;border:none;border-radius:24px;
+  background:linear-gradient(180deg,#5ddc6a,#2fa742);
+  box-shadow:0 4px 0 #1f7d2c;
+  color:#fff;font-family:inherit;font-weight:900;font-size:20px;
+  cursor:pointer;
+}
+.av-done:active{transform:translateY(2px);box-shadow:0 2px 0 #1f7d2c;}
+
 /* ── Double Up offer ── */
 #duModal{
   position:fixed;inset:0;z-index:60;
@@ -2837,6 +2884,22 @@ body{
     <div>Gire o dispositivo<br><small>2248 Nexum foi feito para o modo retrato</small></div>
   </div>
 
+  <!-- ── SELECT AVATAR + NICKNAME (feeds the live ranking) ── -->
+  <div id="avModal">
+    <div class="av-card">
+      <div class="du-header">
+        <span class="du-title">SELECT AVATAR</span>
+        <div class="du-close" id="avClose">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="#fff" stroke-width="3.5" stroke-linecap="round"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+        </div>
+      </div>
+      <div class="av-grid" id="avGrid"></div>
+      <div class="av-nick-label">NickName</div>
+      <input class="av-input" id="avNick" maxlength="14" autocomplete="off" spellcheck="false">
+      <button class="av-done" id="avDone">Done</button>
+    </div>
+  </div>
+
   <!-- ── DOUBLE UP — mid-phase rescue offer: doubles the player's 2nd
        biggest block (gems or rewarded ad) when the phase is stuck ── -->
   <div id="duModal" class="hidden">
@@ -3047,8 +3110,8 @@ body{
       <div class="shop-list" style="gap:12px;">
 
         <!-- User card -->
-        <div class="prof-user-card">
-          <div class="prof-avatar">
+        <div class="prof-user-card" id="profUserCard" style="cursor:pointer;">
+          <div class="prof-avatar" id="profAvatarBox">
             <svg viewBox="0 0 64 64" width="52" height="52" fill="none">
               <circle cx="32" cy="22" r="13" fill="#fff" opacity="0.9"/>
               <path d="M8 60 c0-14 10-22 24-22 s24 8 24 22" fill="#fff" opacity="0.9"/>
@@ -3062,8 +3125,8 @@ body{
             </div>
           </div>
           <div class="prof-user-info">
-            <div class="prof-username">Guest 1780707668</div>
-            <div class="prof-flag">🇧🇷</div>
+            <div class="prof-username" id="profUsername">Player</div>
+            <div class="prof-flag" id="profFlag">🌐</div>
           </div>
         </div>
 
@@ -6357,9 +6420,12 @@ function flagEmoji(cc){
 }
 
 function formatScore(n){
-  if(n >= 1000000) return (n/1000000).toFixed(3).replace('.',',') + 'M';
-  if(n >= 1000)    return (n/1000).toFixed(1).replace('.',',') + 'K';
-  return Number(n).toLocaleString('pt-BR');
+  // Exact number with separators up to 1M (like the original's "10,582");
+  // abbreviate only at large magnitudes where digits stop being readable.
+  n = Number(n);
+  if(n >= 1e9) return (n/1e9).toFixed(2).replace('.',',') + 'B';
+  if(n >= 1e6) return (n/1e6).toFixed(2).replace('.',',') + 'M';
+  return n.toLocaleString('pt-BR');
 }
 
 function rankMedalHTML(rank){
@@ -6369,13 +6435,8 @@ function rankMedalHTML(rank){
   return `<div class="lb-rank">${rank}</div>`;
 }
 
-function avatarHTML(){
-  return `<div class="lb-avatar">
-    <svg viewBox="0 0 32 32" fill="none">
-      <circle cx="16" cy="12" r="5.5" fill="rgba(211,75,255,0.5)"/>
-      <path d="M5 27 c0-6 4.5-10 11-10 s11 4 11 10" fill="rgba(211,75,255,0.4)"/>
-    </svg>
-  </div>`;
+function avatarHTML(av){
+  return `<div class="lb-avatar">${avatarSVG(av == null ? 0 : av, 32)}</div>`;
 }
 
 // ── Score submit (fire-and-forget; called at win) ───────────────
@@ -6388,7 +6449,7 @@ function lbSubmitScore(){
     fetch(LB_API + '/api/score', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: playerId, nick: playerNick, score: score })
+      body: JSON.stringify({ id: playerId, nick: playerNick, score: score, av: myAvatar })
     }).then(()=>{ setTimeout(updateHomeRank, 1200); }).catch(()=>{});
   }catch(e){}
 }
@@ -6416,7 +6477,7 @@ function renderLbRows(data, scope){
     return `
       <div class="lb-row ${isMe ? 'me' : ''}">
         ${rankMedalHTML(r.rank)}
-        ${avatarHTML()}
+        ${avatarHTML(r.av)}
         <div class="lb-info">
           <div class="lb-name">${flag}${escapeHTML(r.nick)}</div>
         </div>
@@ -6433,7 +6494,7 @@ function renderLbRows(data, scope){
         <div class="lb-footer-rank-num">${meRank ? meRank : '—'}</div>
       </div>
       <div class="lb-footer-row">
-        ${avatarHTML()}
+        ${avatarHTML(myAvatar)}
         <div class="lb-footer-name">${escapeHTML(playerNick)} ✎</div>
         <div class="lb-footer-score">${formatScore(meScore)}</div>
       </div>
@@ -6462,6 +6523,11 @@ async function renderLbBody(){
   try{
     const data = await lbFetch(tab);
     if(lbCurrentTab !== tab) return;            // user switched while loading
+    if(data.country){
+      try{ localStorage.setItem('country2248', data.country); }catch(e){}
+      const fl = document.getElementById('profFlag');
+      if(fl) fl.textContent = flagEmoji(data.country);
+    }
     if(tab === 'country' && data.country){
       // label the country tab with the player's real flag + code
       const inner = document.querySelector('#lbTabBR .lb-tab-inner');
@@ -6469,23 +6535,11 @@ async function renderLbBody(){
     }
     body.innerHTML = renderLbRows(data, tab);
     const nickEl = body.querySelector('.lb-footer-name');
-    if(nickEl) nickEl.addEventListener('click', editNickname);
+    if(nickEl) nickEl.addEventListener('click', openAvatarModal);
   }catch(e){
     if(lbCurrentTab !== tab) return;
     body.innerHTML = renderLbOffline();
   }
-}
-
-function editNickname(){
-  const n = prompt('Seu nickname (máx 14 caracteres):', playerNick);
-  if(n === null) return;
-  const clean = sanitizeNick(n);
-  if(!clean) return;
-  playerNick = clean;
-  try{ localStorage.setItem('nick2248', playerNick); }catch(e){}
-  lbLastSubmit = 0;       // allow immediate resubmit with the new nick
-  lbSubmitScore();
-  setTimeout(renderLbBody, 600);
 }
 
 // Full game reset support: removes the player from the live rankings
@@ -6510,6 +6564,141 @@ function lbResetRanking(){
   const el = document.getElementById('hudRank');
   if(el) el.textContent = '—';
 }
+
+// ── 20 procedural flat avatars (reference-style busts, pure SVG) ──
+// Each entry: bg, skin, shirt, hair style, hair colour, accessory.
+// Styles: 0 plain bust · 1 short hair · 2 cap · 3 wide hat · 4 beanie
+//         5 pigtails · 6 long hair · 7 curly
+const AVATARS = [
+  { bg:"#5c6bc0", sk:"#ffffff", sh:"#ffffff", h:0, hc:"",        ac:0 },
+  { bg:"#e57373", sk:"#ffffff", sh:"#ffffff", h:0, hc:"",        ac:0 },
+  { bg:"#ffb74d", sk:"#ffffff", sh:"#ffffff", h:0, hc:"",        ac:0 },
+  { bg:"#ff8a65", sk:"#ffffff", sh:"#ffffff", h:0, hc:"",        ac:0 },
+  { bg:"#ffcc4d", sk:"#ffe0bd", sh:"#5da848", h:2, hc:"#c03030", ac:0 },
+  { bg:"#9575cd", sk:"#c68642", sh:"#3a9688", h:2, hc:"#f09030", ac:0 },
+  { bg:"#e8487c", sk:"#ffe0bd", sh:"#8a8f98", h:3, hc:"#e8c47a", ac:0 },
+  { bg:"#7986cb", sk:"#ffe0bd", sh:"#3a3f55", h:4, hc:"#4a5568", ac:2 },
+  { bg:"#d8b4e8", sk:"#8d5524", sh:"#48889e", h:7, hc:"#2b2222", ac:0 },
+  { bg:"#b8c4e8", sk:"#ffe0bd", sh:"#d84040", h:5, hc:"#2b2222", ac:0 },
+  { bg:"#aed581", sk:"#ffe0bd", sh:"#e88030", h:3, hc:"#8a5cd0", ac:0 },
+  { bg:"#f8bbd0", sk:"#ffdcb8", sh:"#e85030", h:5, hc:"#3a2a20", ac:0 },
+  { bg:"#80cbc4", sk:"#c68642", sh:"#5c6bc0", h:1, hc:"#1a1a1a", ac:0 },
+  { bg:"#ffab91", sk:"#ffe0bd", sh:"#2e7d52", h:1, hc:"#6a4a2a", ac:1 },
+  { bg:"#90caf9", sk:"#8d5524", sh:"#f0a020", h:7, hc:"#101010", ac:0 },
+  { bg:"#ce93d8", sk:"#ffe0bd", sh:"#3a78c8", h:6, hc:"#c8901a", ac:0 },
+  { bg:"#fff176", sk:"#c68642", sh:"#7a3a98", h:6, hc:"#2b2222", ac:2 },
+  { bg:"#bcaaa4", sk:"#ffdcb8", sh:"#306a9e", h:4, hc:"#b04830", ac:0 },
+  { bg:"#a5d6a7", sk:"#8d5524", sh:"#d8485c", h:1, hc:"#1a1a1a", ac:0 },
+  { bg:"#f48fb1", sk:"#ffe0bd", sh:"#2ea08a", h:2, hc:"#5a3a1a", ac:1 }
+];
+function avatarSVG(idx, size){
+  const a = AVATARS[((idx|0) % AVATARS.length + AVATARS.length) % AVATARS.length];
+  const sz = size || 64;
+  let p = `<rect width="64" height="64" rx="12" fill="${a.bg}"/>`;
+  // generic white bust (first 4, like the reference's plain options)
+  if(a.h === 0 && a.sk === "#ffffff"){
+    p += `<circle cx="32" cy="24" r="12" fill="#fff"/>`
+       + `<path d="M10 64 c0-13 9.5-20 22-20 s22 7 22 20 Z" fill="#fff"/>`;
+    return `<svg viewBox="0 0 64 64" width="${sz}" height="${sz}">${p}</svg>`;
+  }
+  // body + head
+  p += `<path d="M10 64 c0-13 9.5-20 22-20 s22 7 22 20 Z" fill="${a.sh}"/>`;
+  p += `<circle cx="32" cy="25" r="11.5" fill="${a.sk}"/>`;
+  // hair styles
+  const hc = a.hc;
+  if(a.h === 1){        // short
+    p += `<path d="M20.5 24 a11.5 11.5 0 0 1 23 0 l-2.5 0 a9 7 0 0 0 -18 0 Z" fill="${hc}"/>`;
+  } else if(a.h === 2){ // cap
+    p += `<path d="M21 22 a11 9 0 0 1 22 0 Z" fill="${hc}"/>`
+       + `<rect x="19" y="20.5" width="27" height="4" rx="2" fill="${hc}"/>`;
+  } else if(a.h === 3){ // wide hat
+    p += `<ellipse cx="32" cy="20" rx="17" ry="4.5" fill="${hc}"/>`
+       + `<path d="M23 20 a9 8 0 0 1 18 0 Z" fill="${hc}"/>`;
+  } else if(a.h === 4){ // beanie
+    p += `<path d="M21 23 a11 10 0 0 1 22 0 Z" fill="${hc}"/>`
+       + `<rect x="20.5" y="21" width="23" height="4.5" rx="2.2" fill="${hc}" opacity="0.8"/>`;
+  } else if(a.h === 5){ // pigtails
+    p += `<path d="M21 23 a11 10 0 0 1 22 0 Z" fill="${hc}"/>`
+       + `<circle cx="17" cy="27" r="5" fill="${hc}"/><circle cx="47" cy="27" r="5" fill="${hc}"/>`;
+  } else if(a.h === 6){ // long
+    p += `<path d="M19 40 V24 a13 12 0 0 1 26 0 V40 l-6 0 V26 a8 8 0 0 0 -14 0 V40 Z" fill="${hc}"/>`;
+  } else if(a.h === 7){ // curly
+    p += `<circle cx="23" cy="19" r="6" fill="${hc}"/><circle cx="32" cy="15.5" r="6.5" fill="${hc}"/>`
+       + `<circle cx="41" cy="19" r="6" fill="${hc}"/><path d="M21 24 a11 8 0 0 1 22 0 Z" fill="${hc}"/>`;
+  }
+  // accessories
+  if(a.ac === 1){       // glasses
+    p += `<circle cx="27" cy="26" r="3.4" fill="none" stroke="#2b2b3a" stroke-width="1.4"/>`
+       + `<circle cx="37" cy="26" r="3.4" fill="none" stroke="#2b2b3a" stroke-width="1.4"/>`
+       + `<line x1="30.4" y1="26" x2="33.6" y2="26" stroke="#2b2b3a" stroke-width="1.4"/>`;
+  } else if(a.ac === 2){ // necklace
+    p += `<circle cx="32" cy="47" r="2.2" fill="#d34bff"/>`;
+  }
+  return `<svg viewBox="0 0 64 64" width="${sz}" height="${sz}">${p}</svg>`;
+}
+
+// ── Avatar selection state ──────────────────────────────────────
+let myAvatar = 0;
+try{ const v = parseInt(localStorage.getItem("avatar2248")||"0",10);
+     if(!isNaN(v)) myAvatar = ((v % AVATARS.length)+AVATARS.length)%AVATARS.length; }catch(e){}
+
+function refreshIdentityUI(){
+  const box = document.getElementById("profAvatarBox");
+  if(box){
+    const badge = box.querySelector(".prof-edit-badge");
+    box.innerHTML = avatarSVG(myAvatar, 52) + (badge ? badge.outerHTML : "");
+  }
+  const un = document.getElementById("profUsername");
+  if(un) un.textContent = playerNick;
+  const fl = document.getElementById("profFlag");
+  if(fl){
+    let cc = "";
+    try{ cc = localStorage.getItem("country2248") || ""; }catch(e){}
+    fl.textContent = flagEmoji(cc);
+  }
+}
+
+// ── SELECT AVATAR modal ─────────────────────────────────────────
+let avSel = 0;
+function openAvatarModal(){
+  avSel = myAvatar;
+  const grid = document.getElementById("avGrid");
+  grid.innerHTML = AVATARS.map((_, i) =>
+    `<div class="av-cell ${i === avSel ? "sel" : ""}" data-av="${i}">${avatarSVG(i)}</div>`
+  ).join("");
+  grid.querySelectorAll(".av-cell").forEach(cell => {
+    cell.addEventListener("click", () => {
+      avSel = parseInt(cell.dataset.av, 10);
+      grid.querySelectorAll(".av-cell").forEach(c => c.classList.remove("sel"));
+      cell.classList.add("sel");
+      linkSound(1);
+    });
+  });
+  document.getElementById("avNick").value = playerNick;
+  document.getElementById("avModal").classList.add("open");
+}
+function closeAvatarModal(){
+  document.getElementById("avModal").classList.remove("open");
+}
+document.getElementById("avClose").addEventListener("click", closeAvatarModal);
+document.getElementById("avDone").addEventListener("click", () => {
+  const clean = sanitizeNick(document.getElementById("avNick").value);
+  if(clean) playerNick = clean;
+  myAvatar = avSel;
+  try{
+    localStorage.setItem("nick2248", playerNick);
+    localStorage.setItem("avatar2248", String(myAvatar));
+  }catch(e){}
+  refreshIdentityUI();
+  closeAvatarModal();
+  gemSound(0.2);
+  lbLastSubmit = 0;          // resubmit immediately with the new identity
+  lbSubmitScore();
+  setTimeout(() => { if(document.getElementById("lbModal").classList.contains("open")) renderLbBody(); }, 800);
+});
+const _profUserCard = document.getElementById("profUserCard");
+if(_profUserCard) _profUserCard.addEventListener("click", openAvatarModal);
+refreshIdentityUI();
 
 function switchLbTab(tab){
   lbCurrentTab = tab;
