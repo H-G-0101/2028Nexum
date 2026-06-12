@@ -5762,7 +5762,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.14";
+const BUILD = "2026-06-11.15";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -5800,10 +5800,12 @@ async function cidiInit(){
           }catch(e){}
         }
       }catch(e){}
-      // RECOVERY PATH: if a medal claim is pending from a previous
-      // session (report lost mid-flight, login was down at win time…),
-      // re-submit it now — every session, until confirmed.
+      // RECOVERY PATH: anything pending from previous sessions (reports
+      // lost mid-flight, login down at win time…) is re-submitted at
+      // every login until the platform confirms.
       cidiFlushMedal();
+      cidiFlushTask();      // same-day window only
+      cidiFlushScore();     // terminal-session score
     }
   }catch(e){
     // TEMP_TOKEN_NOT_FOUND etc. = running outside the platform — fine.
@@ -5851,28 +5853,93 @@ function reloadPersistedState(){
 }
 
 // ── Platform reports (all fire-and-forget, guarded by CIDI.ready) ──
-function cidiReportTask(){
-  // Daily task: "Complete 1 phase" — report at most once per day
-  if(!CIDI.ready) return;
-  const today = new Date().toISOString().slice(0,10).replace(/-/g,"");
-  try{ if(localStorage.getItem("cidiTask2248") === today) return; }catch(e){}
-  CIDI.client.report.gameTask({
-    completeTime: Math.floor(Date.now()/1000),
-    metadata: JSON.stringify({ level: level, score: score })
-  }).then(()=>{
-    try{ localStorage.setItem("cidiTask2248", today); }catch(e){}
-    console.log("[CiDi] daily task reported");
-  }).catch(e => console.warn("[CiDi] task:", e && e.code));
+function cidiBizDate(){
+  return new Date().toISOString().slice(0,10).replace(/-/g,"");
 }
-function cidiReportScore(){
-  // Tournament: "Rank by total score" — report at the stable point (win)
+// ── Daily task: PENDING pattern with a same-day window ──────────
+// The completion is persisted the moment it happens; the flusher
+// retries in-session and again at next login — but ONLY while the
+// calendar day still matches (yesterday's task can't be claimed).
+let cidiTaskAttempts = 0;
+function cidiReportTask(){
+  const today = cidiBizDate();
+  try{ if(localStorage.getItem("cidiTask2248") === today) return; }catch(e){}
+  try{
+    localStorage.setItem("cidiTaskPend2248", JSON.stringify({
+      d: today,
+      t: Math.floor(Date.now()/1000),
+      l: level, s: score
+    }));
+  }catch(e){}
+  cidiFlushTask();
+}
+function cidiFlushTask(){
   if(!CIDI.ready) return;
+  let pend = null;
+  try{ pend = JSON.parse(localStorage.getItem("cidiTaskPend2248") || "null"); }catch(e){}
+  if(!pend || !pend.d) return;
+  const today = cidiBizDate();
+  if(pend.d !== today){                    // day rolled over — window gone
+    try{ localStorage.removeItem("cidiTaskPend2248"); }catch(e){}
+    return;
+  }
+  try{ if(localStorage.getItem("cidiTask2248") === today){
+    localStorage.removeItem("cidiTaskPend2248"); return;
+  }}catch(e){}
+  if(cidiTaskAttempts >= 6) return;        // per-session cap
+  cidiTaskAttempts++;
+  CIDI.client.report.gameTask({
+    completeTime: pend.t,
+    metadata: JSON.stringify({ level: pend.l, score: pend.s })
+  }).then(()=>{
+    try{
+      localStorage.setItem("cidiTask2248", today);
+      localStorage.removeItem("cidiTaskPend2248");
+    }catch(e){}
+    console.log("[CiDi] daily task reported (attempt " + cidiTaskAttempts + ")");
+  }).catch(e => {
+    console.warn("[CiDi] task attempt " + cidiTaskAttempts + " failed:", e && e.code);
+    setTimeout(cidiFlushTask, 4000 * cidiTaskAttempts);
+  });
+}
+// ── Tournament score: PENDING pattern (last-write-wins outbox) ──
+// Each win persists the score BEFORE any network attempt. A lost
+// report self-heals on the next win — and, crucially, the LAST score
+// of a session (the terminal case) is re-submitted at next login.
+// The pending slot only clears when the platform confirms a report
+// covering it; a higher score queued meanwhile supersedes and resends.
+let cidiScoreAttempts = 0, cidiScoreInFlight = false;
+function cidiReportScore(){
+  try{
+    const cur = parseInt(localStorage.getItem("cidiScorePend2248") || "0", 10) || 0;
+    if(score > cur) localStorage.setItem("cidiScorePend2248", String(score));
+  }catch(e){}
+  cidiFlushScore();
+}
+function cidiFlushScore(){
+  if(!CIDI.ready || cidiScoreInFlight) return;
+  let pend = 0;
+  try{ pend = parseInt(localStorage.getItem("cidiScorePend2248") || "0", 10) || 0; }catch(e){}
+  if(pend <= 0) return;
+  if(cidiScoreAttempts >= 6) return;       // per-session cap
+  cidiScoreAttempts++; cidiScoreInFlight = true;
   CIDI.client.report.tournamentScore({
-    score: String(score),
+    score: String(pend),
     reportedAt: Math.floor(Date.now()/1000),
     callbackUrl: location.origin
-  }).then(()=> console.log("[CiDi] score reported:", score))
-    .catch(e => console.warn("[CiDi] score:", e && e.code));
+  }).then(()=>{
+    cidiScoreInFlight = false;
+    console.log("[CiDi] score reported:", pend, "(attempt " + cidiScoreAttempts + ")");
+    try{
+      const cur = parseInt(localStorage.getItem("cidiScorePend2248") || "0", 10) || 0;
+      if(cur <= pend) localStorage.removeItem("cidiScorePend2248");
+      else cidiFlushScore();               // newer score arrived mid-flight
+    }catch(e){}
+  }).catch(e => {
+    cidiScoreInFlight = false;
+    console.warn("[CiDi] score attempt " + cidiScoreAttempts + " failed:", e && e.code);
+    setTimeout(cidiFlushScore, 4000 * cidiScoreAttempts);
+  });
 }
 // ── Medal reporting: PENDING-CLAIM pattern ──────────────────────
 // Lesson from production: if the report is attempted only at the win
