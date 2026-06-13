@@ -5781,11 +5781,11 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.30-debug";
+const BUILD = "2026-06-11.32-debug";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
-const CIDI = { client:null, ready:false, storageReady:false, medalOwned:false };
+const CIDI = { client:null, ready:false, loggedIn:false, storageReady:false, medalOwned:false };
 // ── TEMP debug log buffer (captures the whole init chain) ──
 const DBG_LOG = [];
 function dlog(msg){
@@ -5819,9 +5819,10 @@ async function cidiInit(){
         baseURL: "https://elf-proxy.cidi.games/api/v1",
         apiKey:  CIDI_API_KEY
       });
+      CIDI.ready = true;                 // client ready for reports (like Bubble)
       dlog("client created, calling auth.login()…");
       await CIDI.client.auth.login();
-      CIDI.ready = true;
+      CIDI.loggedIn = true;
       dlog("LOGIN OK");
       // refresh medal ownership so we never re-claim
       try{
@@ -5842,7 +5843,23 @@ async function cidiInit(){
       cidiFlushScore();     // terminal-session score
     } else { dlog("CidiProxySDK MISSING — cannot login"); }
   }catch(e){
-    dlog("LOGIN FAILED: " + (e && (e.code||e.message||JSON.stringify(e))));
+    // rich error dump: surface every field the proxy SDK may expose
+    let det = [];
+    try{
+      if(e){
+        if(e.code) det.push("code="+e.code);
+        if(e.status) det.push("status="+e.status);
+        if(e.statusCode) det.push("statusCode="+e.statusCode);
+        if(e.message) det.push("msg="+e.message);
+        if(e.response){
+          if(e.response.status) det.push("rstatus="+e.response.status);
+          if(e.response.data) det.push("rdata="+JSON.stringify(e.response.data).slice(0,160));
+        }
+        if(e.data) det.push("data="+JSON.stringify(e.data).slice(0,160));
+        if(!det.length) det.push(JSON.stringify(e).slice(0,200));
+      }
+    }catch(_){ det.push("(unserializable error)"); }
+    dlog("LOGIN FAILED: " + det.join(" | "));
   }
   dlog("cidiInit done — ready=" + CIDI.ready);
 }
@@ -5891,7 +5908,7 @@ function reloadPersistedState(){
   if(typeof setMusicVol    === "function") setMusicVol(musicVol);
 }
 
-// ── Platform reports (all fire-and-forget, guarded by CIDI.ready) ──
+// ── Platform reports (fire-and-forget, guarded by CIDI.loggedIn) ──
 function cidiBizDate(){
   return new Date().toISOString().slice(0,10).replace(/-/g,"");
 }
@@ -5913,7 +5930,7 @@ function cidiReportTask(){
   cidiFlushTask();
 }
 function cidiFlushTask(){
-  if(!CIDI.ready) return;
+  if(!CIDI.loggedIn) return;
   let pend = null;
   try{ pend = JSON.parse(localStorage.getItem("cidiTaskPend2248") || "null"); }catch(e){}
   if(!pend || !pend.d) return;
@@ -5956,7 +5973,7 @@ function cidiReportScore(){
   cidiFlushScore();
 }
 function cidiFlushScore(){
-  if(!CIDI.ready || cidiScoreInFlight) return;
+  if(!CIDI.loggedIn || cidiScoreInFlight) return;
   let pend = 0;
   try{ pend = parseInt(localStorage.getItem("cidiScorePend2248") || "0", 10) || 0; }catch(e){}
   if(pend <= 0) return;
@@ -6003,7 +6020,7 @@ function cidiFlushMedal(){
   let pending = false;
   try{ pending = localStorage.getItem("cidiMedalPend2248") === "1"; }catch(e){}
   if(!pending && level >= CIDI_MEDAL_LEVEL){ pending = true; cidiMedalMarkPending(); }
-  if(!pending || !CIDI.ready) return;
+  if(!pending || !CIDI.loggedIn) return;
   if(cidiMedalAttempts >= 6) return;            // per-session cap
   cidiMedalAttempts++;
   CIDI.client.report.medal().then(()=>{
@@ -6059,7 +6076,8 @@ function buildDebugPanel(){
     "  .showRewardedAd fn: " + has(window.CiDiSDK && typeof CiDiSDK.showRewardedAd==="function"),
     "  .init fn: " + has(window.CiDiSDK && typeof CiDiSDK.init==="function"),
     "CidiProxySDK: " + has(window.CidiProxySDK),
-    "CIDI.ready (login): " + has(typeof CIDI!=="undefined" && CIDI.ready),
+    "CIDI.ready (client): " + has(typeof CIDI!=="undefined" && CIDI.ready),
+    "CIDI.loggedIn: " + has(typeof CIDI!=="undefined" && CIDI.loggedIn),
     "→ AD PATH NOW: " + adPath,
     "gems: " + (typeof gems!=="undefined"?gems:"?") + "  level: " + (typeof level!=="undefined"?level:"?"),
     "adShowing: " + has(typeof adShowing!=="undefined" && adShowing),
