@@ -531,6 +531,11 @@ body{
 /* Toolbar */
 .toolbar{display:flex;align-items:flex-start;justify-content:center;gap:12px;padding:8px 0 max(8px,env(safe-area-inset-bottom));}
 .tool{display:flex;flex-direction:column;align-items:center;gap:4px;}
+@keyframes boosterPulse{
+  0%,100%{ transform:scale(1);   box-shadow:0 0 0 0 rgba(255,210,60,0.0); }
+  50%     { transform:scale(1.12); box-shadow:0 0 16px 4px rgba(255,210,60,0.55); }
+}
+.tbtn.hint{ animation:boosterPulse 0.9s ease-in-out infinite; }
 .tbtn{
   width:52px;height:52px;border-radius:14px;border:2px solid #343a7e;
   background:linear-gradient(180deg,#20255e,#171b48);display:flex;align-items:center;justify-content:center;
@@ -894,12 +899,12 @@ body{
 .av-done:active{transform:translateY(2px);box-shadow:0 2px 0 #1f7d2c;}
 
 /* ── Double Up offer ── */
-#duModal{
+#duModal, #shuffleModal{
   position:fixed;inset:0;z-index:60;
   background:rgba(2,4,18,0.82);
   display:flex;align-items:center;justify-content:center;
 }
-#duModal.hidden{display:none;}
+#duModal.hidden, #shuffleModal.hidden{display:none;}
 .du-card{
   width:min(88vw,350px);
   background:#13235e;
@@ -3043,6 +3048,27 @@ body{
     </div>
   </div>
 
+  <!-- ── SHUFFLE — deadlock rescue (free once / then ad) ── -->
+  <div id="shuffleModal" class="hidden">
+    <div class="du-card">
+      <div class="du-header">
+        <span class="du-title">NO MOVES</span>
+      </div>
+      <div class="du-body" style="text-align:center;">
+        <div style="font-size:52px;line-height:1;margin:4px 0 10px;">🔀</div>
+        <div style="color:#cdd6ff;font-weight:700;font-size:15px;line-height:1.5;margin-bottom:18px;">
+          No combinations left!<br>Shuffle the board to keep playing.
+        </div>
+        <button class="du-btn" id="shufAdBtn">
+          <span class="du-ad-ic"><svg viewBox="0 0 24 24" fill="#fff" width="16" height="16"><path d="M8 5v14l11-7z"/></svg></span>
+          <b>Shuffle</b>
+        </button>
+        <div class="du-or" style="margin:10px 0;">OR</div>
+        <button class="du-btn" id="shufFreeBtn"><b>Free Shuffle</b></button>
+      </div>
+    </div>
+  </div>
+
   <!-- ── DOUBLE UP — mid-phase rescue offer: doubles the player's 2nd
        biggest block (gems or rewarded ad) when the phase is stuck ── -->
   <div id="duModal" class="hidden">
@@ -3633,7 +3659,7 @@ body{
             </svg>
             <div class="lu-block" id="luBlock"><span id="luBlockVal">4096</span></div>
           </div>
-          <div class="lu-reward">Your Reward <span class="gem">💎</span> +<span id="luReward">5</span></div>
+          <div class="lu-reward">Watch AD to win <span class="gem">💎</span> <span id="luReward">10</span></div>
           <div class="lu-bar-wrap">
             <div class="lu-bar" id="luBar"></div>
             <div class="lu-pointer" id="luPointer"></div>
@@ -3995,6 +4021,22 @@ const COLS = 5, ROWS = 8;
 const GAP = 13;
 // GOAL is now dynamic — set per level in bootGame/fillBoardInitial
 let GOAL = 512;
+
+// ═══════════════ DIFFICULTY TUNING (calibrate here) ═══════════════
+// Higher = harder. All effects ramp in from level DIFF_RAMP_FROM and
+// cap out at DIFF_RAMP_TO, so early levels stay gentle (onboarding).
+const DIFF = {
+  RAMP_FROM: 2,        // difficulty starts ramping at this level
+  RAMP_TO:   20,       // full difficulty reached here
+  // Hostile spawn: how strongly low tiles are favoured over high tiles.
+  // 0 = fully random (old behaviour). 1.0 = strong low-tile bias.
+  LOW_BIAS_MAX: 0.85,  // bias toward clutter (low blocks) at full ramp
+  HIGH_CHOKE_MAX: 0.6, // how much the TOP useful tiles are suppressed
+};
+function diffProgress(){   // 0..1 across the ramp for the current level
+  const t = (level - DIFF.RAMP_FROM) / Math.max(1, DIFF.RAMP_TO - DIFF.RAMP_FROM);
+  return Math.max(0, Math.min(1, t));
+}
 const COLORS = {
   2:        "#1a8fd1",   // deep blue
   4:        "#d4780a",   // deep orange
@@ -4069,13 +4111,32 @@ function spawnFloor(goal){
 function getSpawnPool(){
   // Spawn variety scales with the current objective, like the original:
   // e.g. objective 8192 -> tiles fall from 2 up to 128 (8192/64).
-  const ceil  = Math.max(8, GOAL / 64);     // 512->8, 8192->128, 32768->512 ...
+  const ceil  = Math.max(8, GOAL / 64);
   let   floor = spawnFloor(GOAL);
-  const pool  = [];
-  for(let v = floor; v <= ceil; v *= 2){
-    pool.push([v, 1]);   // equal weight -> fully random across the window
+  // Collect the window first so we know how many powers wide it is.
+  const vals = [];
+  for(let v = floor; v <= ceil; v *= 2) vals.push(v);
+  if(!vals.length) return SPAWN_DEFAULT;
+
+  const p = diffProgress();
+  if(p <= 0){
+    // gentle early levels: fully random, old behaviour
+    return vals.map(v => [v, 1]);
   }
-  return pool.length ? pool : SPAWN_DEFAULT;
+  // HOSTILE SPAWN: weight low tiles up (clutter) and suppress the top
+  // useful tiles (less free progress). Bias grows with difficulty ramp.
+  const lowBias   = DIFF.LOW_BIAS_MAX   * p;   // 0..0.85
+  const highChoke = DIFF.HIGH_CHOKE_MAX * p;   // 0..0.6
+  const n = vals.length;
+  const pool = vals.map((v, i) => {
+    const rank = n > 1 ? i / (n - 1) : 0;      // 0 = lowest, 1 = highest
+    // base weight decays toward high tiles (low-bias)
+    let w = 1 + lowBias * (1 - rank) * 2.2;
+    // choke the top ~2 tiles specifically (the ones that help most)
+    if(rank > 0.66) w *= (1 - highChoke);
+    return [v, Math.max(0.05, w)];
+  });
+  return pool;
 }
 
 let board = [];
@@ -4943,6 +5004,7 @@ function resolveMerge(used, res){
     saveState();
     setTimeout(()=>{
       ensureMovesAvailable();        // deadlock check after every settle
+      updateBoosterHints();          // pulse boosters when moves run low
       busy=false;
       if(res.result>=GOAL) win();
       else maybeOfferDoubleUp();
@@ -4971,8 +5033,35 @@ function hasAnyMove(){
   }
   return false;
 }
-function ensureMovesAvailable(){
-  if(hasAnyMove()) return;
+// Count adjacent equal-pairs available — a proxy for "how stuck am I".
+// Few pairs = tight board → nudge the player toward boosters.
+function countMoves(){
+  let n = 0;
+  for(let r = 0; r < ROWS; r++){
+    for(let c = 0; c < COLS; c++){
+      const o = board[r][c]; if(!o) continue;
+      const nb = [[r, c+1],[r+1, c-1],[r+1, c],[r+1, c+1]];
+      for(const [rr, cc] of nb){
+        if(rr < ROWS && cc >= 0 && cc < COLS){
+          const t = board[rr][cc];
+          if(t && t.value === o.value) n++;
+        }
+      }
+    }
+  }
+  return n;
+}
+// Pulse the booster buttons when moves get scarce; stop as soon as the
+// board opens up again. Only kicks in once boosters are unlocked.
+const BOOSTER_HINT_THRESHOLD = 2;   // <= this many pairs → hint
+function updateBoosterHints(){
+  const tight = countMoves() <= BOOSTER_HINT_THRESHOLD;
+  const sw = document.getElementById("swapBtn");
+  const hm = document.getElementById("hammerBtn");
+  [sw, hm].forEach(b => { if(b) b.classList.toggle("hint", tight); });
+}
+// Performs the actual reshuffle of tile VALUES until a move exists.
+function doShuffleBoard(){
   const tiles = [];
   for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++){
     if(board[r][c]) tiles.push(board[r][c]);
@@ -4985,15 +5074,61 @@ function ensureMovesAvailable(){
     guard++;
   } while(!hasAnyMove() && guard < 24);
   if(!hasAnyMove()){
-    // forced fallback: clone one value onto an adjacent cell
     const a = board[ROWS-1][0], b = board[ROWS-1][1];
     if(a && b) b.value = a.value;
   }
   tiles.forEach(t => styleTile(t));
   refreshCrowns();
   saveState();
-  shuffleToast();
+  updateBoosterHints();
   goalSound();
+}
+
+// Deadlock handling: ONE free shuffle per phase; after that the player
+// must watch an ad to reshuffle (strong monetization moment created by
+// the hostile spawn). The modal blocks play until resolved.
+let freeShuffleUsed = false;     // reset each phase in advancePhase
+function ensureMovesAvailable(){
+  if(hasAnyMove()) return;
+  const tiles = [];
+  for(let r = 0; r < ROWS; r++) for(let c = 0; c < COLS; c++){
+    if(board[r][c]) tiles.push(board[r][c]);
+  }
+  if(tiles.length < 2) return;     // not enough tiles to bother
+  openShuffleModal();
+}
+
+function openShuffleModal(){
+  const m = document.getElementById("shuffleModal");
+  if(!m) { doShuffleBoard(); shuffleToast(); return; }   // fallback safety
+  
+  // free-shuffle button only the first time per phase
+  const freeBtn = document.getElementById("shufFreeBtn");
+  const adBtn   = document.getElementById("shufAdBtn");
+  if(freeShuffleUsed){
+    if(freeBtn) freeBtn.style.display = "none";
+  } else {
+    if(freeBtn) freeBtn.style.display = "";
+  }
+  playing = false;                 // freeze board behind the modal
+  m.classList.remove("hidden");
+}
+function closeShuffleModal(){
+  const m = document.getElementById("shuffleModal");
+  if(m) m.classList.add("hidden");
+  playing = true;
+}
+function shuffleFree(){
+  freeShuffleUsed = true;
+  closeShuffleModal();
+  doShuffleBoard();
+  shuffleToast();
+}
+function shuffleViaAd(){
+  showRewardedAd(
+    ()=>{ closeShuffleModal(); doShuffleBoard(); shuffleToast(); },
+    ()=>{ /* ad failed/dismissed — stay on the modal, board still stuck */ }
+  );
 }
 function shuffleToast(){
   const t = document.createElement("div");
@@ -5039,11 +5174,15 @@ function cullBelowFloor(animatePop){
 //     the cap relaxing only if the spawn-pool window runs out.
 let spawnBatch = null;          // value → count, while a refill batch runs
 function randSpawnBatched(){
-  if(level <= 3 || !spawnBatch) return randSpawn();
+  // Levels 1-4: free random (a refill may repeat values — gentle).
+  // Level 5+: every tile in a single refill batch is DISTINCT — no two
+  // equal values ever fall together, removing gifted ready-made chains.
+  // Only if the value window is narrower than the batch (more tiles than
+  // distinct values exist) does the cap relax, as a mathematical fallback.
+  if(level <= 4 || !spawnBatch) return randSpawn();
   const pool = getSpawnPool();
-  const total = Object.values(spawnBatch).reduce((a, b) => a + b, 0);
-  let cap = total >= 5 ? 2 : 1;       // distinct for the first 5, pairs after
-  for(let relax = 0; relax < 4; relax++){
+  let cap = 1;                        // distinct: at most ONE of each value
+  for(let relax = 0; relax < 6; relax++){
     const candidates = pool.filter(([v]) => (spawnBatch[v] || 0) < cap);
     if(candidates.length){
       let totW = 0;
@@ -5057,7 +5196,7 @@ function randSpawnBatched(){
       spawnBatch[v] = (spawnBatch[v] || 0) + 1;
       return v;
     }
-    cap++;                            // pool exhausted at this cap — relax
+    cap++;                            // window smaller than batch — relax
   }
   return randSpawn();                 // safety net (never reached in practice)
 }
@@ -5154,7 +5293,7 @@ function confetti(){
 }
 
 // ── LEVEL UP / NEW BLOCK reward modal ───────────────────────────
-const LU_MULTS  = [2,3,4,5,4,3,2];
+const LU_MULTS  = [3,5,7,10,7,5,3];   // aggressive ad reward (base 5 → 15..50)
 const LU_COLORS = ["#e7443f","#f0892c","#e9c022","#4fbf3f","#e9c022","#f0892c","#e7443f"];
 const LU_BASE_REWARD = 5;
 let luRAF=null, luMult=2;
@@ -5170,6 +5309,7 @@ function setLuMult(frac){
   const idx=Math.max(0,Math.min(LU_MULTS.length-1,Math.floor(frac*LU_MULTS.length)));
   luMult=LU_MULTS[idx];
   $("#luMult").textContent=luMult;
+  const rw=$("#luReward"); if(rw) rw.textContent = LU_BASE_REWARD * luMult;
   // pointer sits at the centre of the current segment
   $("#luPointer").style.left=((idx+0.5)/LU_MULTS.length*100)+"%";
 }
@@ -5180,7 +5320,7 @@ function showLevelUp(value){
   const bl=$("#luBlock");
   bl.style.background="linear-gradient(180deg,"+lighten(col,18)+","+col+")";
   $("#luBlockVal").style.color=isLightColor(col)?"#33333f":"#fff";
-  $("#luReward").textContent=LU_BASE_REWARD;
+  $("#luReward").textContent=LU_BASE_REWARD * luMult;
   luResolved = false; luAdPending = false;   // re-arm the level-up buttons
   $("#levelUpModal").classList.add("show");
   // animate the pointer bouncing across the bar
@@ -5199,6 +5339,7 @@ function hideLevelUp(){
 }
 function advancePhase(){
   hideLevelUp();   // no-op if already hidden by the reward flow
+  freeShuffleUsed = false;   // each new phase grants one free shuffle
   // Continuous play: keep the board intact, only advance the objective bar.
   level = levelForGoal(highest * 2);     // next objective = double the tile just reached
   GOAL  = goalForLevel(level);
@@ -5299,12 +5440,9 @@ $("#luClaim").addEventListener("click",()=>{
 $("#luNo").addEventListener("click",()=>{
   if(luResolved || luAdPending) return;
   luResolved = true;
-  gems += LU_BASE_REWARD; updateHUD();
+  // No Thanks gives NO diamonds — the ad (Claim xN) is the only reward path.
   hideLevelUp();
-  setTimeout(()=>{
-    gemFlyReward(LU_BASE_REWARD, null);
-    advancePhase();
-  }, 280);
+  setTimeout(advancePhase, 280);
 });
 $("#luClose").addEventListener("click",()=>{
   if(luResolved || luAdPending) return;
@@ -5325,6 +5463,7 @@ try{ swapTutSeen = localStorage.getItem("swapTut2248") === "1"; }catch(e){}
 
 function enterSwapMode(){
   swapMode = true; swapFirstTile = null;
+  ["swapBtn","hammerBtn"].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove("hint"); });
   playing = false;                       // block normal chain drags
   gameScreen.classList.add("swap-mode");
   $("#swapDim").classList.remove("hidden");
@@ -5413,6 +5552,7 @@ try{ smashTutSeen = localStorage.getItem("smashTut2248") === "1"; }catch(e){}
 
 function enterSmashMode(){
   smashMode = true;
+  ["swapBtn","hammerBtn"].forEach(id=>{ const b=document.getElementById(id); if(b) b.classList.remove("hint"); });
   playing = false;
   gameScreen.classList.add("swap-mode");          // same board-above-dim styling
   $("#swapDim").classList.remove("hidden");
@@ -5543,6 +5683,8 @@ document.getElementById("duGems").addEventListener("click", ()=>{
   duApply();
 });
 let duAdPending = false;
+document.getElementById("shufAdBtn").addEventListener("click", shuffleViaAd);
+document.getElementById("shufFreeBtn").addEventListener("click", shuffleFree);
 document.getElementById("duAd").addEventListener("click", ()=>{
   if(duAdPending) return;                 // block double-tap during the ad
   duAdPending = true;
@@ -5781,7 +5923,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-13.2-dbg";
+const BUILD = "2026-06-13.10";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -6016,7 +6158,7 @@ function cidiMaybeClaimMedal(){
 // Toggleable diagnostic overlay (matches the in-house tester layout).
 // Set DEBUG_PANEL_ENABLED=false to hide the floating button entirely
 // before publishing. The panel itself never affects gameplay.
-const DEBUG_PANEL_ENABLED = true;
+const DEBUG_PANEL_ENABLED = false;
 
 function _dbgWins(){
   try{ const d=JSON.parse(localStorage.getItem("dr_state")||"{}"); }catch(e){}
