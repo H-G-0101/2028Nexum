@@ -5473,7 +5473,7 @@ function smashTap(obj){
 // (or a long time). Offers to DOUBLE the 2nd biggest block — putting
 // them one merge away from pairing — for gems OR a rewarded ad.
 // Shows at most once per phase; trackers reset in markPhaseStart().
-const DU_COST = 75, DU_MOVES = 30, DU_TIME_MS = 150000;
+const DU_COST = 75, DU_MOVES = 30, DU_TIME_MS = 170000;
 let duShownThisPhase = false, phaseMoves = 0, phaseStartMs = Date.now();
 let duTarget = null;
 
@@ -5542,8 +5542,14 @@ document.getElementById("duGems").addEventListener("click", ()=>{
   gems -= DU_COST; updateGems();
   duApply();
 });
+let duAdPending = false;
 document.getElementById("duAd").addEventListener("click", ()=>{
-  showRewardedAd(duApply);
+  if(duAdPending) return;                 // block double-tap during the ad
+  duAdPending = true;
+  showRewardedAd(
+    ()=>{ duAdPending = false; duApply(); },   // reward → double the tile
+    ()=>{ duAdPending = false; }               // fail/dismiss → re-arm, no change
+  );
 });
 
 const _hammerBtn = document.getElementById("hammerBtn");
@@ -5778,7 +5784,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.20";
+const BUILD = "2026-06-11.23";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -6029,8 +6035,19 @@ function showRewardedAd(onReward, onFail){
     loader.classList.add("show");
     const hideLoader = () => loader.classList.remove("show");
     const loaderSafety = setTimeout(hideLoader, 10000);
+    // Hard safety: if the SDK promise NEVER settles (rare hang), don't
+    // leave adShowing stuck true forever — that would block every future
+    // ad this session. Auto-release after 45s as a dismiss/no-reward.
+    let settled = false;
+    const stuckSafety = setTimeout(()=>{
+      if(settled) return; settled = true;
+      hideLoader(); adShowing = false; playing = wasPlaying;
+      console.warn("[CiDi] ad promise hung — released");
+      fail();
+    }, 45000);
     CiDiSDK.showRewardedAd().then(result => {
-      clearTimeout(loaderSafety); hideLoader();
+      if(settled) return; settled = true;
+      clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
       adShowing = false; playing = wasPlaying;
       if(result && result.success === true){
         if(typeof onReward === "function") onReward();
@@ -6038,7 +6055,8 @@ function showRewardedAd(onReward, onFail){
         fail();                                       // not rewarded → no gems
       }
     }).catch(err => {
-      clearTimeout(loaderSafety); hideLoader();
+      if(settled) return; settled = true;
+      clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
       adShowing = false; playing = wasPlaying;
       console.warn("[CiDi] ad:", err && err.error, err && err.message);
       fail();
@@ -6116,19 +6134,26 @@ document.querySelectorAll(".shop-pack").forEach(btn => {
   const key  = "pack" + btn.dataset.gems;
   const need = parseInt(btn.dataset.ads, 10);
   packLabel(btn, need, shopAdProg[key] || 0);
+  let packPending = false;
   btn.addEventListener("click", () => {
-    showRewardedAd(() => {
-      shopAdProg[key] = (shopAdProg[key] || 0) + 1;
-      if(shopAdProg[key] >= need){
-        shopAdProg[key] = 0;
-        const amount = parseInt(btn.dataset.gems, 10);
-        gems += amount;
-        updateGems();
-        gemRewardSplash(amount);          // big on-screen "+N DIAMONDS"
-      }
-      packLabel(btn, need, shopAdProg[key]);
-      saveShopProg();
-    });
+    if(packPending) return;               // block double-tap during the ad
+    packPending = true;
+    showRewardedAd(
+      () => {
+        packPending = false;
+        shopAdProg[key] = (shopAdProg[key] || 0) + 1;
+        if(shopAdProg[key] >= need){
+          shopAdProg[key] = 0;
+          const amount = parseInt(btn.dataset.gems, 10);
+          gems += amount;
+          updateGems();
+          gemRewardSplash(amount);        // big on-screen "+N DIAMONDS"
+        }
+        packLabel(btn, need, shopAdProg[key]);
+        saveShopProg();
+      },
+      () => { packPending = false; }      // fail/dismiss → re-arm, no credit
+    );
   });
 });
 
