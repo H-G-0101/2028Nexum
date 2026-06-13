@@ -5784,7 +5784,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.24";
+const BUILD = "2026-06-11.26-debug";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -6009,6 +6009,74 @@ function cidiMaybeClaimMedal(){
 }
 
 // ── Rewarded ad: REAL CiDi ad when available, simulated fallback ──
+// TEMP diagnostic — shows the raw CiDi ad result/error on screen so we
+// can see it inside the CiDi app (no console needed). Remove after debug.
+function adDebugToast(msg){
+  const t = document.createElement("div");
+  t.textContent = msg;
+  t.style.cssText =
+    "position:fixed;left:8px;right:8px;top:80px;z-index:3000;" +
+    "background:rgba(10,6,30,0.96);color:#9fe;font-weight:700;font-size:13px;" +
+    "line-height:1.4;padding:12px 14px;border-radius:12px;word-break:break-all;" +
+    "border:2px solid rgba(120,200,255,0.5);text-align:center;";
+  document.body.appendChild(t);
+  setTimeout(()=> t.remove(), 6000);
+}
+// ── TEMP on-screen debug button + panel (remove after debugging) ──
+// Tap the floating "DBG" button anytime to dump live state: build,
+// platform/token, SDK presence, login status, last ad result, gems.
+let lastAdResult = "(no ad yet)";
+function buildDebugPanel(){
+  const has = (x)=> x ? "yes" : "NO";
+  const sp = new URLSearchParams(location.search);
+  const lines = [
+    "BUILD: " + (typeof BUILD!=="undefined"?BUILD:"?"),
+    "host: " + location.hostname,
+    "tempToken: " + has(sp.has("tempToken")),
+    "CiDiSDK loaded: " + has(window.CiDiSDK),
+    "  .showRewardedAd: " + has(window.CiDiSDK && typeof CiDiSDK.showRewardedAd==="function"),
+    "CidiProxySDK: " + has(window.CidiProxySDK),
+    "CIDI.ready (login): " + has(typeof CIDI!=="undefined" && CIDI.ready),
+    "CIDI.medalOwned: " + has(typeof CIDI!=="undefined" && CIDI.medalOwned),
+    "gems: " + (typeof gems!=="undefined"?gems:"?"),
+    "level: " + (typeof level!=="undefined"?level:"?"),
+    "adShowing: " + has(typeof adShowing!=="undefined" && adShowing),
+    "LAST AD RESULT:",
+    "  " + lastAdResult,
+  ];
+  return lines.join("\n");
+}
+function showDebugPanel(){
+  let p = document.getElementById("dbgPanel");
+  if(p){ p.remove(); return; }              // toggle off
+  p = document.createElement("div");
+  p.id = "dbgPanel";
+  p.style.cssText =
+    "position:fixed;left:8px;right:8px;top:70px;z-index:4000;" +
+    "background:rgba(8,5,24,0.97);color:#9fe;font:600 13px/1.5 monospace;" +
+    "white-space:pre-wrap;word-break:break-all;padding:14px 16px;border-radius:12px;" +
+    "border:2px solid rgba(120,200,255,0.55);max-height:70vh;overflow:auto;";
+  p.textContent = buildDebugPanel();
+  const close = document.createElement("button");
+  close.textContent = "× close";
+  close.style.cssText = "display:block;margin:12px auto 0;padding:8px 18px;border:none;border-radius:10px;background:#3a4090;color:#fff;font-weight:800;";
+  close.onclick = ()=> p.remove();
+  p.appendChild(close);
+  document.body.appendChild(p);
+}
+(function addDebugButton(){
+  const b = document.createElement("button");
+  b.id = "dbgBtn";
+  b.textContent = "DBG";
+  b.style.cssText =
+    "position:fixed;right:10px;bottom:96px;z-index:4001;width:52px;height:52px;" +
+    "border-radius:50%;border:2px solid #9fe;background:rgba(20,12,50,0.9);" +
+    "color:#9fe;font-weight:900;font-size:13px;box-shadow:0 4px 12px rgba(0,0,0,.5);";
+  b.onclick = showDebugPanel;
+  if(document.body) document.body.appendChild(b);
+  else window.addEventListener("DOMContentLoaded", ()=> document.body.appendChild(b));
+})();
+
 function adFailToast(msg){
   const t = document.createElement("div");
   t.textContent = msg || "AD UNAVAILABLE — TRY AGAIN";
@@ -6049,6 +6117,8 @@ function showRewardedAd(onReward, onFail){
       if(settled) return; settled = true;
       clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
       adShowing = false; playing = wasPlaying;
+      lastAdResult = "RESULT: " + JSON.stringify(result);   // TEMP for DBG panel
+      adDebugToast(lastAdResult);
       if(result && result.success === true){
         if(typeof onReward === "function") onReward();
       } else {
@@ -6059,6 +6129,8 @@ function showRewardedAd(onReward, onFail){
       clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
       adShowing = false; playing = wasPlaying;
       console.warn("[CiDi] ad:", err && err.error, err && err.message);
+      lastAdResult = "ERROR: " + (err && (err.error||err.message||err.code) || JSON.stringify(err));  // TEMP
+      adDebugToast(lastAdResult);
       fail();
     });
     return;
