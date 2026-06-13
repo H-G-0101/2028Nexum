@@ -5198,7 +5198,7 @@ function hideLevelUp(){
   $("#levelUpModal").classList.remove("show");
 }
 function advancePhase(){
-  hideLevelUp();
+  hideLevelUp();   // no-op if already hidden by the reward flow
   // Continuous play: keep the board intact, only advance the objective bar.
   level = levelForGoal(highest * 2);     // next objective = double the tile just reached
   GOAL  = goalForLevel(level);
@@ -5284,8 +5284,14 @@ $("#luClaim").addEventListener("click",()=>{
       luResolved = true;
       const amt = LU_BASE_REWARD * mult;
       gems += amt; updateHUD();
-      gemFlyReward(amt, document.getElementById("luClaim"));
-      advancePhase();
+      // Hide the modal FIRST, then play the flying-gems animation on a
+      // clean screen (modal exit takes ~0.25s), and only advance the
+      // phase after — so the reward feedback isn't buried behind the card.
+      hideLevelUp();
+      setTimeout(()=>{
+        gemFlyReward(amt, null);
+        advancePhase();
+      }, 280);
     },
     ()=>{ luAdPending = false; }            // onFail/dismiss — re-arm, stay on modal
   );
@@ -5294,8 +5300,11 @@ $("#luNo").addEventListener("click",()=>{
   if(luResolved || luAdPending) return;
   luResolved = true;
   gems += LU_BASE_REWARD; updateHUD();
-  gemFlyReward(LU_BASE_REWARD, document.getElementById("luNo"));
-  advancePhase();
+  hideLevelUp();
+  setTimeout(()=>{
+    gemFlyReward(LU_BASE_REWARD, null);
+    advancePhase();
+  }, 280);
 });
 $("#luClose").addEventListener("click",()=>{
   if(luResolved || luAdPending) return;
@@ -5769,7 +5778,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.19";
+const BUILD = "2026-06-11.20";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
