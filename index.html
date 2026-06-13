@@ -5781,7 +5781,7 @@ let adShowing = false;
 // Build tag — bump on every deploy; check it in the console (or via
 // javascript:alert(BUILD) in the address bar) to confirm which build
 // is live and rule out stale-deploy confusion.
-const BUILD = "2026-06-11.29-debug";
+const BUILD = "2026-06-11.30-debug";
 console.log("[2248 Nexum] build", BUILD);
 
 const CIDI_API_KEY = "CIDI_E2CDBEDE2CD546D5";
@@ -6127,62 +6127,24 @@ function showRewardedAd(onReward, onFail){
     const loader = document.getElementById("adLoading");
     loader.classList.add("show");
     const hideLoader = () => loader.classList.remove("show");
-    const loaderSafety = setTimeout(hideLoader, 10000);
-    // Hard safety: if the SDK promise NEVER settles (rare hang), don't
-    // leave adShowing stuck true forever — that would block every future
-    // ad this session. Auto-release after 45s as a dismiss/no-reward.
-    let settled = false;
-    const startedAt = Date.now();
-    const release = (why)=>{
-      if(settled) return; settled = true;
-      clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
-      document.removeEventListener("visibilitychange", onVis);
-      adShowing = false; playing = wasPlaying;
-      lastAdResult = why;
-      dlog(why);
-      adDebugToast(why);
-    };
-    // Safety A: wall-clock check when the tab becomes visible again
-    // (ad apps suspend page timers; this fires the moment we return).
-    const onVis = ()=>{
-      if(document.visibilityState === "visible" && !settled &&
-         Date.now() - startedAt > 8000){
-        release("RELEASED: promise hung (visibility, " +
-                Math.round((Date.now()-startedAt)/1000) + "s)");
-        fail();
+    // Matches the working game EXACTLY: await showRewardedAd() with NO
+    // arguments; only success===true rewards; any other case fails.
+    (async ()=>{
+      let ok = false, info = "";
+      try{
+        const r = await CiDiSDK.showRewardedAd();
+        ok = !!(r && r.success === true);
+        info = ok ? "RESULT: success" : ("RESULT: " + JSON.stringify(r));
+      }catch(e){
+        ok = false;
+        info = "ERROR: " + (e && (e.code||e.error||e.message) || JSON.stringify(e));
       }
-    };
-    document.addEventListener("visibilitychange", onVis);
-    // Safety B: hard timer fallback
-    const stuckSafety = setTimeout(()=>{
-      release("RELEASED: promise hung (timer 60s)");
-      fail();
-    }, 60000);
-    // Pass an explicit timeout so the SDK itself rejects instead of
-    // hanging forever (doc default is 300000ms = 5 min).
-    CiDiSDK.showRewardedAd({ timeout: 60000 }).then(result => {
-      if(settled) return;
-      settled = true;
-      clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
-      document.removeEventListener("visibilitychange", onVis);
+      hideLoader();
       adShowing = false; playing = wasPlaying;
-      lastAdResult = "RESULT: " + JSON.stringify(result);
-      dlog(lastAdResult); adDebugToast(lastAdResult);
-      if(result && result.success === true){
-        if(typeof onReward === "function") onReward();
-      } else {
-        if(typeof onFail === "function") onFail();
-      }
-    }).catch(err => {
-      if(settled) return;
-      settled = true;
-      clearTimeout(loaderSafety); clearTimeout(stuckSafety); hideLoader();
-      document.removeEventListener("visibilitychange", onVis);
-      adShowing = false; playing = wasPlaying;
-      lastAdResult = "ERROR: " + (err && (err.error||err.message||err.code) || JSON.stringify(err));
-      dlog(lastAdResult); adDebugToast(lastAdResult);
-      if(typeof onFail === "function") onFail();
-    });
+      lastAdResult = info; dlog(info); adDebugToast(info);
+      if(ok){ if(typeof onReward === "function") onReward(); }
+      else  { if(typeof onFail   === "function") onFail();   }
+    })();
     return;
   }
   // SECURITY: the simulated ad is a DEV-ONLY tool.
